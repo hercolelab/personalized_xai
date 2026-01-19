@@ -1,0 +1,70 @@
+seed: 42 
+
+data:
+  csv_path: "diabetes.csv"
+  target: "Outcome"
+  test_size: 0.2
+  actionable_features: ['Glucose', 'BMI', 'Insulin', 'BloodPressure']
+
+model:
+  hidden_layers: [32, 16]
+  lr: 0.005
+  epochs: 100
+  batch_size: 32
+
+xai:
+  shap_background_samples: 100
+  dice_method: "gradient" #  "random"/"genetic"
+  dice_total_cfs: 1
+  dice_desired_class: 0
+  shap_relevance_threshold: 0.01
+
+personas:
+  patient: [0.2, 0.8, 0.3, 0.8]   # Simple, Action-oriented
+  clinician: [0.9, 0.3, 0.8, 0.2] # High Tech, Cause-oriented
+
+cpm:
+  learning_rate: 0.2
+
+verifier:
+  tolerances:
+    default: 0.5
+    impact: 0.005
+    alignment: 0.35
+  alias_map:
+    BLOODPRESSURE: ["BP", "BLOOD_PRESSURE", "PRESSIONE", "B_P"]
+    DIABETESPEDIGREEFUNCTION: ["DPF", "PEDIGREE", "GENETICS", "FAMILY_HISTORY"]
+    GLUCOSE: ["GLU", "GLICEMIA", "ZUCCHERO"]
+    PREGNANCIES: ["PREG", "GRAVIDANZE"]
+  llm_judge_model: "llama3"
+
+  verifier_rubric:
+    technicality:
+      levels:
+        0.2: "Layman: Absolutely no raw numbers in the prose. Only qualitative terms (e.g., 'high', 'healthy range')."
+        0.5: "Balanced: Mentions specific measurements (e.g., Glucose 180) but strictly avoids SHAP impact decimals."
+        0.9: "Technical: Full clinical reporting including raw measurements and statistical impacts (SHAP decimals)."
+    
+    verbosity:
+      levels:
+        0.2: "Telegraphic: Minimalist, using bullet points and short fragments. No conversational filler."
+        0.5: "Standard: Concise sentences. Clear and direct without being overly descriptive."
+        0.8: "Narrative: Elaborate prose with transition words, introductions, and detailed explanations."
+
+    perspective:
+      levels:
+        0.2: "Retroactive: Explains the current state as a historical fact or a 'report' of what is."
+        0.5: "Mixed: Balanced focus between current causes and potential future changes."
+        0.8: "Proactive: Frames everything as a roadmap, coaching advice, or a goal-oriented plan."
+
+    depth:
+      levels:
+        0.3: "Direct: Factors are listed in isolation (e.g., 'Glucose is high. Age is a factor.')."
+        0.5: "Intermediate: Mentions that multiple things contribute to the risk together."
+        0.8: "Causal: Explains interactions (e.g., 'Your age makes your high glucose levels more dangerous')."
+
+orchestrator:
+  max_retries: 10
+  clean_tags_from_final: true
+  test_role: "patient" # Default role for main test
+
