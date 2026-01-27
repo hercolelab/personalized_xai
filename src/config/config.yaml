@@ -36,7 +36,7 @@ verifier:
     DIABETESPEDIGREEFUNCTION: ["DPF", "PEDIGREE", "GENETICS", "FAMILY_HISTORY"]
     GLUCOSE: ["GLU", "GLICEMIA", "ZUCCHERO"]
     PREGNANCIES: ["PREG", "GRAVIDANZE"]
-  llm_judge_model: "llama3"
+  llm_judge_model: "gpt-oss:20b-cloud"
 
   verifier_rubric:
     technicality:

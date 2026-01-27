@@ -37,10 +37,22 @@ The repository follows a modular architecture that separates data processing, st
 
 2. **Set Up the LLM Backend**
 
-   Ensure that Ollama is running locally and that the required model is available:
+   **Local mode (no auth required):** ensure that Ollama is running locally and that the required model is available:
 
    ```bash
-   ollama pull llama3
+   ollama serve
+   ollama pull llama3.1:8b
+   ```
+
+   **Cloud mode (requires auth):** authenticate, then pull and use the cloud model.
+
+   ```bash
+   # API key via environment
+   export OLLAMA_API_KEY="<your_api_key>"
+
+   # Start the Ollama server and pull the cloud model
+   ollama serve
+   ollama pull gpt-oss:20b-cloud
    ```
 
 3. **Configure Settings**

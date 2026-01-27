@@ -4,10 +4,10 @@ import numpy as np
 import re
 import yaml
 from termcolor import colored
-from src.components.a_setup_xai import XAI_Backend
-from src.components.b_cpm import ContextualPreferenceModel
-from src.components.c_generator import NarrativeGenerator
-from src.components.d_verifiers import XAIVerifier  
+from components.a_setup_xai import XAI_Backend
+from components.b_cpm import ContextualPreferenceModel
+from components.c_generator import NarrativeGenerator
+from components.d_verifiers import XAIVerifier  
 
 def clean_tags(text):
     """Removes all XAI tags for the final user-facing output."""
@@ -23,7 +23,7 @@ class XAI_Orchestrator:
         print(colored("[System] Initializing generalized XAI Pipeline...", "white", attrs=['bold']))
         self.backend = XAI_Backend(config_path)
         self.cpm = ContextualPreferenceModel(config_path)
-        self.narrator = NarrativeGenerator(model_name=self.cfg['verifier'].get('llm_judge_model', 'llama3'))
+        self.narrator = NarrativeGenerator(model_name=self.cfg['verifier'].get('llm_judge_model', 'llama3.1:8b'))
         self.verifier = XAIVerifier(config_path)
         
         self.max_retries = self.cfg.get('orchestrator', {}).get('max_retries', 5)
