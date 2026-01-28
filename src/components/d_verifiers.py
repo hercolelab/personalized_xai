@@ -132,21 +132,24 @@ class XAIVerifier:
 
         unique_levels = sorted(list(set(available_levels)))
 
-        judge_prompt = f"""
-        [TASK] Evaluate the narrative by selecting the closest numerical level from this list: {unique_levels}
+        judge_prompt = f""" You are a helpful assistant that evaluates the stylistic profile of a narrative with the provided rubric guidelines.
+        The narrative is a description of a counterfactual explanation, supported by SHAP feature attributions.
+        
+        # TASK
+        Your task is:
+        1. Read the narrative and the rubric guidelines.
+        2. Evaluate the narrative by selecting the closest numerical level from this list: {unique_levels}.
 
-        [RUBRIC]
+        # OUTPUT FORMAT
+        Return ONLY a JSON object with the following keys: {{"technicality": <number>, "verbosity": <number>, "depth": <number>, "perspective": <number>}}.
+        No other text or comments.
+        
+        # RUBRIC GUIDELINES
         {rubric_str}
-        [SCORING RULES]
-            1. TECHNICALITY: 0.8+ requires SHAP decimals (e.g., 0.267) and raw values.
-            2. PERSPECTIVE: 0.2 means 'Retroactive/Analytical'. 0.8 means 'Proactive/Coaching'. 
-            - A Clinician report (0.2) should look like a data summary.
-            - A Patient roadmap (0.8) should look like a health plan.
 
-        [NARRATIVE]
+        Here is the narrative to evaluate:
+        # NARRATIVE
         {narrative}
-
-        [OUTPUT] Return ONLY JSON: {{"technicality": 0.5, "verbosity": 0.5, "depth": 0.5, "perspective": 0.5}}
         """
 
         try:

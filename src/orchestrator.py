@@ -13,7 +13,8 @@ def clean_tags(text):
     """Removes all XAI tags for the final user-facing output."""
     text = re.sub(r"\[/?V_[^\]]+\]", "", text)
     text = re.sub(r"\[/?I_[^\]]+\]", "", text)
-    return re.sub(r'\s+', ' ', text).strip()
+    #return re.sub(r'\s+', ' ', text).strip()
+    return text
 
 class XAI_Orchestrator:
     def __init__(self, config_path='src/config/config.yaml'):
@@ -104,7 +105,7 @@ def main():
     best_idx = int(np.argmax(probs))
     
     # Run the loop
-    results = orchestrator.run("patient", best_idx)
+    results = orchestrator.run("clinician", best_idx)
 
     # FINAL OUTPUT
     if results['status'] == "success":

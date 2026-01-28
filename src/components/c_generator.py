@@ -42,7 +42,7 @@ class NarrativeGenerator:
 
         # Verbosity Logic
         if style['verbosity'] < 0.4:
-            instr.append(f"VERBOSITY LOW: {sf['verbosity']['low']['description']} {sf['verbosity']['low']['format']}")
+            instr.append(f"VERBOSITY LOW: {sf['verbosity']['low']['description']}")
         elif style['verbosity'] > 0.7:
             instr.append(f"VERBOSITY HIGH: {sf['verbosity']['high']['description']}")
 
@@ -65,33 +65,63 @@ class NarrativeGenerator:
         data_json = json.dumps(raw_data, indent=2)
 
         # Build the final prompt using YAML content
-        prompt = f"""
-        [SYSTEM ROLE]
-        {self.prompts['role_definition']}
+        prompt = f"""You are an expert XAI (Explainable AI) Interpreter and Data Narrator. Your role is to bridge the gap between complex machine learning algorithms and human understanding. You translate mathematical outputs into clear, actionable natural language narratives.
+        
+        To perform this task, you must understand two core concepts:
+        1.  Counterfactual Explanation: A "What-if" scenario that identifies the minimal changes required in the user's current situation to achieve a different, desired model outcome (e.g., flipping a loan rejection to approval). It focuses on actionability.
+        2.  SHAP (SHapley Additive exPlanations): A game-theoretic method that explains a machine-learning model’s prediction by assigning each feature a Shapley-based attribution that quantifies its average marginal contribution—positive or negative—to the deviation from the model’s expected output.
 
-        [CLINICAL GUARDRAILS]
-        {chr(10).join(self.prompts['clinical_guardrails'])}
+        # INPUT DATA STRUCTURE 
+        You will receive a JSON object containing the following keys:
+        - `current`: A dictionary representing the original profile or situation of the instance.
+        - `target`: A dictionary representing the specific list of changes suggested by the counterfactual explanation algorithm.
+        - `shap_impacts`: A dictionary containing the top-3 SHAP values (feature importance) regarding this specific prediction.
+        - `shap_ranking`: A list of the top-3 SHAP features ranked by importance.
+        - `probabilities`: A dictionary containing:
+            - `current`: The prediction probability of the original profile.
+            - `minimized`: The prediction probability achieved after applying the counterfactual changes.
+        
+        # TASK
+        Your task is:
+        - Write a narrative that describes a Counterfactual Explanation, supported by SHAP Feature Attributions. Explain the journey from the Current state to the Target state. Do not simply list the changes. 
+        - Analyze the contribution of the changed features and highlight how the interactions between these features drive the shift in the prediction probability. 
+        - Explain why the suggested changes lead to the desired outcome (using the provided SHAP values as evidence of impact if the style allows it).
+        
+        # STYLE REQUIREMENTS
+        The narrative must follow a specific stylistic profile defined along four dimensions:
+        - Technicality: ranges from layperson-friendly language with minimal numbers to highly clinical language with precise measurements and technical terms.
+        - Verbosity: ranges from very concise, bullet-style communication to more elaborate, flowing narrative text.
+        - Depth: ranges from listing individual factors in isolation to explaining how multiple factors interact and jointly affect the outcome.
+        - Perspective: ranges from purely descriptive/retroactive reporting of the current situation to proactive, coaching-oriented guidance focused on future changes.
 
-        [DYNAMIC STYLE INSTRUCTIONS]
-        {dynamic_style}
+        # FORMAT & TAGGING RULES (CRITICAL)
+        To allow for automated post-processing and validation, you must wrap all numerical values and feature names in specific XML-style tags. DO NOT deviate from this format.
+        1.  Current Values: When mentioning a value from the user's original profile, wrap it as: `[V_START_FEATURE_NAME]value[/V_START_FEATURE_NAME]`
+        2.  Target Values: When mentioning a suggested new value from the counterfactual, wrap it as: `[V_GOAL_FEATURE_NAME]value[/V_GOAL_FEATURE_NAME]`
+        3.  SHAP Impacts: When mentioning a SHAP contribution value, wrap it as: `[I_FEATURE_NAME]value[/I_FEATURE_NAME]`
 
-        [TAGGING RULES]
-        {chr(10).join(self.prompts['tagging_rules'])}
+        # CLINICAL GUARDRAILS
+        - Static vs Dynamic: Only features in the 'target' dictionary are changeable. Treat all others as static context (NEVER suggest changing them)."
+        - SHAP Integration: SHAP values can be used to support the description of the counterfactual explanation, but only if the style allows it. If a feature is not in the 'target' dictionary, DO NOT mention its SHAP value or the importance of the feature in the narrative.
+        - SHAP Suppression: If perspective is high, technicality is low, or verbosity is low, DO NOT mention SHAP impact values.
+        
+        # ADDITIONAL INSTRUCTIONS
+        - Never mention static features in the narrative.
+        - Highlight the changes: Do not list the data input entirely, but rather highlight the changes and the impact of the changes.
 
-        [REFERENCE EXAMPLES]
-        Patient-Style Example: {self.prompts['few_shot_examples']['style_examples']['patient_oriented']['example']}
-        Clinician-Style Example: {self.prompts['few_shot_examples']['style_examples']['clinician_oriented']['example']}
-
-        [DATA INPUT]
+        
+        Here is your input:
+        # DATA INPUT
         {data_json}
 
-        [TASK]
-        1. REASONING: List static vs dynamic features based on the 'target' dictionary.
-        2. NARRATIVE: Provide the final fluid explanation.
+        Here is your style instructions:
+        # STYLE INSTRUCTIONS
+        {dynamic_style}
         """
 
+
         if hint:
-            prompt += f"\n\n[CRITICAL CORRECTION REQUIRED]:\n{hint}"
+            prompt += f"\n\n# CRITICAL CORRECTION REQUIRED:\n{hint}"
 
         payload = {
             "model": self.model_name, 

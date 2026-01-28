@@ -19,9 +19,10 @@ xai:
   dice_desired_class: 0
   shap_relevance_threshold: 0.01
 
+# [technicality, verbosity, depth, perspective]
 personas:
-  patient: [0.2, 0.8, 0.3, 0.8]   # Simple, Action-oriented
-  clinician: [0.9, 0.3, 0.8, 0.2] # High Tech, Cause-oriented
+  patient: [0.2, 0.8, 0.8, 0.8]   # Simple, Action-oriented
+  clinician: [0.8, 0.2, 0.2, 0.8] # High Tech, Cause-oriented
 
 cpm:
   learning_rate: 0.2
@@ -36,32 +37,30 @@ verifier:
     DIABETESPEDIGREEFUNCTION: ["DPF", "PEDIGREE", "GENETICS", "FAMILY_HISTORY"]
     GLUCOSE: ["GLU", "GLICEMIA", "ZUCCHERO"]
     PREGNANCIES: ["PREG", "GRAVIDANZE"]
+    
   llm_judge_model: "gpt-oss:20b-cloud"
 
   verifier_rubric:
     technicality:
       levels:
-        0.2: "Layman: Absolutely no raw numbers in the prose. Only qualitative terms (e.g., 'high', 'healthy range')."
-        0.5: "Balanced: Mentions specific measurements (e.g., Glucose 180) but strictly avoids SHAP impact decimals."
-        0.9: "Technical: Full clinical reporting including raw measurements and statistical impacts (SHAP decimals)."
-    
+        0.2: "Accessible: Uses plain language to explain concepts. Numbers are allowed (and expected if tagged), but the focus is on simple explanations, avoiding complex jargon."
+        0.5: "Balanced: Uses specific measurements and some technical terms, but avoids heavy statistical breakdowns."
+        0.8: "Technical: Professional clinical report style. Uses exact values, specific medical/statistical terminology, and discusses precise statistical impacts (SHAP values)."
     verbosity:
       levels:
-        0.2: "Telegraphic: Minimalist, using bullet points and short fragments. No conversational filler."
-        0.5: "Standard: Concise sentences. Clear and direct without being overly descriptive."
-        0.8: "Narrative: Elaborate prose with transition words, introductions, and detailed explanations."
-
-    perspective:
-      levels:
-        0.2: "Retroactive: Explains the current state as a historical fact or a 'report' of what is."
-        0.5: "Mixed: Balanced focus between current causes and potential future changes."
-        0.8: "Proactive: Frames everything as a roadmap, coaching advice, or a goal-oriented plan."
-
+        0.2: "Telegraphic: Strictly uses bullet points. Very concise, short sentences, zero conversational filler."
+        0.5: "Standard: Concise paragraphs or mixed formatting. Clear and direct."
+        0.8: "Narrative: High fluency. Strictly NO bullet points and NO markdown headers. Continuous prose using transition words (e.g., 'Furthermore', 'Consequently')."
     depth:
       levels:
-        0.3: "Direct: Factors are listed in isolation (e.g., 'Glucose is high. Age is a factor.')."
-        0.5: "Intermediate: Mentions that multiple things contribute to the risk together."
-        0.8: "Causal: Explains interactions (e.g., 'Your age makes your high glucose levels more dangerous')."
+        0.2: "Surface: Analyzes features in isolation (one-by-one). Focuses on individual impacts without linking them together."
+        0.5: "Intermediate: Acknowledges that multiple features contribute to the outcome but lacks detailed interaction analysis."
+        0.8: "Systemic: Deep analysis of interactions. Explains how features work together (e.g., 'Feature A amplifies the risk of Feature B') to drive the prediction."
+    perspective:
+      levels:
+        0.2: "Retroactive: Explains the 'Current' state. Tone is descriptive, reporting on the existing situation/medical history."
+        0.5: "Mixed: Balances the explanation of the current state with some future-looking statements."
+        0.8: "Proactive: Frames the content as a future roadmap or action plan. Tone is coaching and prescriptive."
 
 orchestrator:
   max_retries: 10
