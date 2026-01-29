@@ -105,7 +105,7 @@ def main():
     best_idx = int(np.argmax(probs))
     
     # Run the loop
-    results = orchestrator.run("clinician", best_idx)
+    results = orchestrator.run("test", best_idx)
 
     # FINAL OUTPUT
     if results['status'] == "success":

@@ -23,6 +23,8 @@ xai:
 personas:
   patient: [0.2, 0.8, 0.8, 0.8]   # Simple, Action-oriented
   clinician: [0.8, 0.2, 0.2, 0.8] # High Tech, Cause-oriented
+  balanced: [0.5, 0.5, 0.5, 0.5] # Balanced analysis
+  test: [0.8, 0.5, 0.5, 0.8] # Test style
 
 cpm:
   learning_rate: 0.2
@@ -43,14 +45,14 @@ verifier:
   verifier_rubric:
     technicality:
       levels:
-        0.2: "Accessible: Uses plain language to explain concepts. Numbers are allowed (and expected if tagged), but the focus is on simple explanations, avoiding complex jargon."
-        0.5: "Balanced: Uses specific measurements and some technical terms, but avoids heavy statistical breakdowns."
-        0.8: "Technical: Professional clinical report style. Uses exact values, specific medical/statistical terminology, and discusses precise statistical impacts (SHAP values)."
+        0.2: "Accessible: Uses plain language to explain concepts. Numbers are allowed, but the focus is on simple explanations, avoiding complex jargon. SHAP values should not be mentioned in the narrative."
+        0.5: "Balanced: Uses specific measurements and some technical terms, but avoids heavy statistical breakdowns. SHAP values should not be mentioned in the narrative."
+        0.8: "Technical: Professional clinical report style. Uses exact values, specific medical/statistical terminology, and discusses precise statistical impacts (SHAP values should be mentioned in the narrative)."
     verbosity:
       levels:
         0.2: "Telegraphic: Strictly uses bullet points. Very concise, short sentences, zero conversational filler."
         0.5: "Standard: Concise paragraphs or mixed formatting. Clear and direct."
-        0.8: "Narrative: High fluency. Strictly NO bullet points and NO markdown headers. Continuous prose using transition words (e.g., 'Furthermore', 'Consequently')."
+        0.8: "Narrative: High fluency. Strictly NO bullet points. Continuous prose using transition words (e.g., 'Furthermore', 'Consequently')."
     depth:
       levels:
         0.2: "Surface: Analyzes features in isolation (one-by-one). Focuses on individual impacts without linking them together."

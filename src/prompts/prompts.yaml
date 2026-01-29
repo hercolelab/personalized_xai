@@ -6,25 +6,36 @@ system_prompts:
           low:
             description: "Accessible communication. You may use specific numbers (wrapped in tags), but prioritize explaining technical concepts in plain, simple language avoiding jargon. DO NOT use SHAP values in the narrative."
             example: "Your glucose level is 189, which is significantly high and serves as the main reason for the risk."
+          medium:
+            description: "Balanced communication. Uses specific measurements and some technical terms, but avoids heavy statistical breakdowns. DO NOT use SHAP values in the narrative."
+            example: "Your glucose level of 189 mg/dL is elevated and contributes significantly to your risk assessment."
           high:
-            description: "Professional clinical report. Use exact values, specific medical/statistical terminology, and discuss the precise magnitude of impacts."
+            description: "Professional clinical report. Use exact values, specific medical/statistical terminology, and discuss the precise magnitude of impacts. SHAP values should be mentioned in the narrative."
             example: "Glucose (189.0 mg/dL) shows a maximal SHAP impact of +0.49, driving the prediction."
         verbosity:
           low:
             description: "Concise but explanatory. Use bullet-point format. Explain the changes and the impact of the changes in a concise way."
             format: "Bullet points only. Short sentences."
+          medium:
+            description: "Standard verbosity. Use concise paragraphs or mixed formatting. Be clear and direct."
+            format: "Paragraphs or mixed formatting. Clear and direct."
           high:
             description: "Fluent narrative flow. Strictly NO bullet points. Write in flowing paragraphs."
             format: "Paragraphs only."
         depth:
           low:
             description: "Surface-level focus. Discuss features in isolation (one by one). Do not over-explain the meaning and the importance of the impact, just the direction."
+          medium:
+            description: "Intermediate depth. Acknowledge that multiple features contribute to the outcome, but avoid detailed interaction analysis. Focus on individual contributions without extensively linking them together."
           high:
-            description: "Deep systemic analysis. Provide detailed explanations of the feature, its impact, and how it interacts with other features to drive the probability shift."
+            description: "Deep systemic analysis. Provide detailed explanations of the feature, its impact (SHAP values should be mentioned in the narrative), and how it interacts with other features to drive the probability shift."
         perspective:
           low:
             description: "Retroactive. Context: Medical History/Current State Analysis."
             tone: "Explaining the present situation."
+          medium:
+            description: "Mixed perspective. Context: Balanced analysis. Balance the explanation of the current state with some future-looking statements."
+            tone: "Combining descriptive reporting with forward-looking guidance."
           high:
             description: "Proactive. Context: Roadmap/Action Plan. Translate goals into lifestyle changes."
             tone: "Prescribing the future. Use coaching language."

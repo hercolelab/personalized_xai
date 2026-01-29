@@ -40,15 +40,15 @@ class XAIVerifier:
         self.tolerances = self.cfg['verifier'].get('tolerances', {})
         self.alias_map = self.cfg['verifier'].get('alias_map', {})
 
-    # --- 1. FAITHFULNESS VERIFICATION (Numerical Accuracy) ---
+    # --- 1. FAITHFULNESS VERIFICATION (Values match ground truth) ---
     def verify_faithfulness(self, narrative, ground_truth, style):
         """
-        Ensures numbers mentioned in tags match the XAI Backend output.
-        Adjusts strictness based on technicality style.
+        Ensures that whenever a value is mentioned in tags, it matches the XAI Backend output.
+        Does not check presence of data; that is handled by completeness.
         """
-        curr_regex = re.findall(r"\[V_START_(\w+)\]([\d\.]+)\[/V_START_\w+\]", narrative)
-        targ_regex = re.findall(r"\[V_GOAL_(\w+)\]([\d\.]+)\[/V_GOAL_\w+\]", narrative)
-        imp_regex = re.findall(r"\[I_(\w+)\]([\d\.]+)\[/I_\w+\]", narrative)
+        curr_regex = re.findall(r"\[V_START_(\w+)\]([\d\.\-]+)\[/V_START_\w+\]", narrative)
+        targ_regex = re.findall(r"\[V_GOAL_(\w+)\]([\d\.\-]+)\[/V_GOAL_\w+\]", narrative)
+        imp_regex = re.findall(r"\[I_(\w+)\]([\d\.\-]+)\[/I_\w+\]", narrative)
 
         extracted = {
             "current": {k.upper(): v for k, v in curr_regex},
@@ -56,7 +56,7 @@ class XAIVerifier:
             "impacts": {k.upper(): v for k, v in imp_regex}
         }
 
-        # Numerical Validation 
+        # Numerical Validation: every mentioned value must match ground truth
         def validate_values(extracted_dict, gt_dict, label_type):
             for feat, val in extracted_dict.items():
                 try:
@@ -70,7 +70,6 @@ class XAIVerifier:
                 except (ValueError, TypeError): continue
             return True, ""
 
-        # validate across all XAI categories
         for cat, lbl in [("current", "START"), ("target", "GOAL"), ("impacts", "IMPACT")]:
             gt_key = "shap_impacts" if cat == "impacts" else cat
             ok, err = validate_values(extracted[cat], ground_truth.get(gt_key, {}), lbl)
@@ -78,12 +77,12 @@ class XAIVerifier:
 
         return True, "Faithfulness Verified"
     
-    # --- 2. COMPLETENESS VERIFICATION (Feature Coverage) ---
+    # --- 2. COMPLETENESS VERIFICATION (All required data present) ---
     def verify_completeness(self, narrative, ground_truth, style):
         """
-        Checks if required features are present based on Perspective style.
-        - High Perspective (>=0.5): Focuses only on Actionable Changes (CF).
-        - Low Perspective (<0.5): Requires both Actionable Changes and SHAP Drivers.
+        Checks that all required data are present (not that values are correct).
+        - Perspective: required features to mention (changes only vs changes + top SHAP).
+        - High technicality/depth (>0.7): SHAP values must be present for all target features.
         """
         # Identify features that actually changed significantly (Counterfactuals)
         actual_changes = []
@@ -93,31 +92,43 @@ class XAIVerifier:
                 if abs(float(target_val) - float(current_val)) > 0.1:
                     actual_changes.append(feat)
 
-        #  Determine the required set based on Style Perspective
+        # Determine the required set based on Style Perspective
         if style['perspective'] >= 0.5:
-            # Coaching Mode: Only require features the patient needs to change
             required_features = set(actual_changes)
             mode_label = "Proactive (Changes only)"
         else:
-            # Analytical Mode: Require both changes and top SHAP drivers
-            required_features = set(actual_changes + ground_truth.get('shap_ranking', []))
+            shap_impacts = ground_truth.get('shap_impacts', {})
+            top_shap_features = list(shap_impacts.keys())[:3] if shap_impacts else []
+            required_features = set(actual_changes + top_shap_features)
             mode_label = "Retroactive (Changes + SHAP Drivers)"
 
-        missing = []
+        missing = set()
         for feat in required_features:
             feat_upper = feat.upper()
             valid_names = [feat_upper] + self.alias_map.get(feat_upper, [])
-            
-            pattern = "|".join(valid_names)
-            # Check for tags or simple text mentions
+            pattern = "|".join([re.escape(n) for n in valid_names])
             found = re.search(rf"\[(V_START|V_GOAL|I)_({pattern})\]", narrative, re.IGNORECASE) or \
                     any(name.lower() in narrative.lower() for name in valid_names)
-            
             if not found:
-                missing.append(feat)
+                missing.add(feat)
+
+        # When technicality or depth is high, require SHAP values present for all target features
+        requires_shap = style.get('technicality', 0) > 0.7 or style.get('depth', 0) > 0.7
+        if requires_shap:
+            target_features = list(ground_truth.get('target', {}).keys())
+            for feat in target_features:
+                feat_upper = feat.upper()
+                valid_names = [feat_upper] + self.alias_map.get(feat_upper, [])
+                pattern = "|".join([re.escape(n) for n in valid_names])
+                # Require [I_FEATURE]value[/I_...] to be present
+                shap_present = re.search(rf"\[I_({pattern})\]([\d\.\-]+)\[/I_\w+\]", narrative, re.IGNORECASE)
+                if not shap_present:
+                    missing.add(feat)
+            if target_features:
+                mode_label = f"{mode_label}; SHAP required for target features"
 
         if missing:
-            return False, f"Completeness Error [{mode_label}]: Missing data for {missing}."
+            return False, f"Completeness Error [{mode_label}]: Missing data for {sorted(missing)}."
         
         return True, f"Completeness Verified ({mode_label})"
 

@@ -134,8 +134,7 @@ class XAI_Backend:
         ground_truth = {
             "current": { k: round(float(real_orig[k]), 1) for k in self.numerical },
             "target": { k: round(float(real_target[k]), 1) for k in changed_features }, # ONLY CHANGED
-            "shap_impacts": { feat: round(float(imp), 4) for feat, imp in shap_list[:3] },
-            "shap_ranking": [item[0] for item in shap_list[:3]],
+            "shap_impacts": { feat: round(float(imp), 4) for feat, imp in shap_list },  # All features ordered by magnitude
             "probabilities": {
                 "current": round(prob * 100, 2),
                 "minimized": round(reduced_prob * 100, 2)

@@ -39,24 +39,32 @@ class NarrativeGenerator:
             instr.append(f"TECHNICALITY LOW: {sf['technicality']['low']['description']}")
         elif style['technicality'] > 0.7:
             instr.append(f"TECHNICALITY HIGH: {sf['technicality']['high']['description']}")
+        else:
+            instr.append(f"TECHNICALITY MEDIUM: {sf['technicality']['medium']['description']}")
 
         # Verbosity Logic
         if style['verbosity'] < 0.4:
             instr.append(f"VERBOSITY LOW: {sf['verbosity']['low']['description']}")
         elif style['verbosity'] > 0.7:
             instr.append(f"VERBOSITY HIGH: {sf['verbosity']['high']['description']}")
+        else:
+            instr.append(f"VERBOSITY MEDIUM: {sf['verbosity']['medium']['description']}")
 
         # Depth Logic
         if style['depth'] < 0.4:
             instr.append(f"DEPTH LOW: {sf['depth']['low']['description']}")
         elif style['depth'] > 0.7:
             instr.append(f"DEPTH HIGH: {sf['depth']['high']['description']}")
+        else:
+            instr.append(f"DEPTH MEDIUM: {sf['depth']['medium']['description']}")
 
         # Perspective Logic
         if style['perspective'] < 0.4:
             instr.append(f"PERSPECTIVE LOW: {sf['perspective']['low']['description']} Tone: {sf['perspective']['low']['tone']}")
         elif style['perspective'] > 0.7:
             instr.append(f"PERSPECTIVE HIGH: {sf['perspective']['high']['description']} Tone: {sf['perspective']['high']['tone']}")
+        else:
+            instr.append(f"PERSPECTIVE MEDIUM: {sf['perspective']['medium']['description']} Tone: {sf['perspective']['medium']['tone']}")
             
         return "\n".join([f"- {i}" for i in instr])
 
@@ -75,8 +83,7 @@ class NarrativeGenerator:
         You will receive a JSON object containing the following keys:
         - `current`: A dictionary representing the original profile or situation of the instance.
         - `target`: A dictionary representing the specific list of changes suggested by the counterfactual explanation algorithm.
-        - `shap_impacts`: A dictionary containing the top-3 SHAP values (feature importance) regarding this specific prediction.
-        - `shap_ranking`: A list of the top-3 SHAP features ranked by importance.
+        - `shap_impacts`: A dictionary containing SHAP values for all features, ordered by magnitude (absolute value) from highest to lowest. Each key is a feature name and each value is the SHAP impact value for that feature.
         - `probabilities`: A dictionary containing:
             - `current`: The prediction probability of the original profile.
             - `minimized`: The prediction probability achieved after applying the counterfactual changes.
@@ -102,12 +109,13 @@ class NarrativeGenerator:
 
         # CLINICAL GUARDRAILS
         - Static vs Dynamic: Only features in the 'target' dictionary are changeable. Treat all others as static context (NEVER suggest changing them)."
-        - SHAP Integration: SHAP values can be used to support the description of the counterfactual explanation, but only if the style allows it. If a feature is not in the 'target' dictionary, DO NOT mention its SHAP value or the importance of the feature in the narrative.
+        - SHAP Integration: SHAP values can be used to support the description of the counterfactual explanation, but only if the style allows it. If a feature is not in the 'target' dictionary, DO NOT mention its SHAP value in the narrative.
         - SHAP Suppression: If perspective is high, technicality is low, or verbosity is low, DO NOT mention SHAP impact values.
         
         # ADDITIONAL INSTRUCTIONS
-        - Never mention static features in the narrative.
         - Highlight the changes: Do not list the data input entirely, but rather highlight the changes and the impact of the changes.
+        - You are the Narrator: Consider the counterfactual and SHAP values not as independent entities, but as a cohesive unit that drives the narrative.
+        - Don't use "Counterfactual" term: Instead, use "Suggested Changes" or "Recommended Changes".
 
         
         Here is your input:
@@ -150,8 +158,7 @@ if __name__ == "__main__":
     sample_data = {
       "current": {"Glucose": 148.0, "BMI": 33.6, "Age": 50.0},
       "target": {"Glucose": 110.0, "BMI": 28.5},
-      "shap_impacts": {"Glucose": 0.12, "BMI": 0.08},
-      "shap_ranking": ["Glucose", "BMI"],
+      "shap_impacts": {"Glucose": 0.12, "BMI": 0.08, "Age": 0.05, "BloodPressure": 0.03},
       "probabilities": {"current": 82.5, "minimized": 41.2}
     }
     
