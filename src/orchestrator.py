@@ -7,27 +7,37 @@ from termcolor import colored
 from components.a_setup_xai import XAI_Backend
 from components.b_cpm import ContextualPreferenceModel
 from components.c_generator import NarrativeGenerator
-from components.d_verifiers import XAIVerifier  
+from components.d_verifiers import XAIVerifier
+
 
 def clean_tags(text):
     """Removes all XAI tags for the final user-facing output."""
     text = re.sub(r"\[/?V_[^\]]+\]", "", text)
     text = re.sub(r"\[/?I_[^\]]+\]", "", text)
-    #return re.sub(r'\s+', ' ', text).strip()
+    # return re.sub(r'\s+', ' ', text).strip()
     return text
 
+
 class XAI_Orchestrator:
-    def __init__(self, config_path='src/config/config.yaml'):
-        with open(config_path, 'r') as f:
+    def __init__(self, config_path="src/config/config.yaml"):
+        with open(config_path, "r") as f:
             self.cfg = yaml.safe_load(f)
-        
-        print(colored("[System] Initializing generalized XAI Pipeline...", "white", attrs=['bold']))
+
+        print(
+            colored(
+                "[System] Initializing generalized XAI Pipeline...",
+                "white",
+                attrs=["bold"],
+            )
+        )
         self.backend = XAI_Backend(config_path)
         self.cpm = ContextualPreferenceModel(config_path)
-        self.narrator = NarrativeGenerator(model_name=self.cfg['verifier'].get('llm_judge_model', 'llama3.1:8b'))
+        self.narrator = NarrativeGenerator(
+            model_name=self.cfg["verifier"].get("llm_judge_model", "llama3.1:8b")
+        )
         self.verifier = XAIVerifier(config_path)
-        
-        self.max_retries = self.cfg.get('orchestrator', {}).get('max_retries', 5)
+
+        self.max_retries = self.cfg.get("orchestrator", {}).get("max_retries", 5)
 
     def run(self, role, instance_idx):
         """
@@ -36,84 +46,136 @@ class XAI_Orchestrator:
         # 1. FETCH RAW DATA
         # Returns the raw text summary and the ground_truth dictionary
         raw_xai_text, ground_truth = self.backend.get_explanation(instance_idx)
-        
+
         # PRINT RAW EXPLAINER OUTPUT
-        print(colored("\n" + "="*20 + " RAW BACKEND EXPLAINER OUTPUT " + "="*20, "magenta"))
+        print(
+            colored(
+                "\n" + "=" * 20 + " RAW BACKEND EXPLAINER OUTPUT " + "=" * 20, "magenta"
+            )
+        )
         print(raw_xai_text)
         print(colored("Ground Truth Dictionary:", "magenta"))
         print(ground_truth)
-        print(colored("="*70 + "\n", "magenta"))
+        print(colored("=" * 70 + "\n", "magenta"))
 
         # 2. SETUP STYLE
         self.cpm.initialize(role)
         target_style = self.cpm.get_state()
-        
-        print(colored(f"[Orchestrator] Persona: {role.upper()} | Target Style: {target_style}", "cyan"))
+
+        print(
+            colored(
+                f"[Orchestrator] Persona: {role.upper()} | Target Style: {target_style}",
+                "cyan",
+            )
+        )
 
         # 3. REJECTION SAMPLING LOOP
         for attempt in range(self.max_retries):
-            print(colored(f"\n[Attempt {attempt+1}/{self.max_retries}] Generating Narrative...", "yellow"))
-            
+            print(
+                colored(
+                    f"\n[Attempt {attempt + 1}/{self.max_retries}] Generating Narrative...",
+                    "yellow",
+                )
+            )
+
             # A. GENERATION
             # We pass the ground_truth dict to the narrator for better precision
             candidate_narrative = self.narrator.generate(ground_truth, target_style)
-            
+
             # PRINT CANDIDATE NARRATIVE
-            print(colored(f"-"*15 + " CANDIDATE NARRATIVE " + "-"*15, "yellow"))
+            print(colored(f"-" * 15 + " CANDIDATE NARRATIVE " + "-" * 15, "yellow"))
             print(candidate_narrative)
-            print(colored("-"*51, "yellow"))
+            print(colored("-" * 51, "yellow"))
 
             # B. VERIFICATION
-            is_faithful, reason_f = self.verifier.verify_faithfulness(candidate_narrative, ground_truth, target_style)
-            is_complete, reason_c = self.verifier.verify_completeness(candidate_narrative, ground_truth, target_style)
-            is_aligned, style_report = self.verifier.verify_alignment(candidate_narrative, target_style)
+            is_faithful, reason_f = self.verifier.verify_faithfulness(
+                candidate_narrative, ground_truth, target_style
+            )
+            is_complete, reason_c = self.verifier.verify_completeness(
+                candidate_narrative, ground_truth, target_style
+            )
+            is_aligned, style_report = self.verifier.verify_alignment(
+                candidate_narrative, target_style
+            )
 
             # C. DECISION
             if is_faithful and is_complete and is_aligned:
-                print(colored(f"  [SUCCESS] All checks passed on attempt {attempt+1}.", "green", attrs=['bold']))
-                
+                print(
+                    colored(
+                        f"  [SUCCESS] All checks passed on attempt {attempt + 1}.",
+                        "green",
+                        attrs=["bold"],
+                    )
+                )
+
                 # Optionally clean tags for final presentation
                 final_text = candidate_narrative
-                if self.cfg.get('orchestrator', {}).get('clean_tags_from_final', True):
+                if self.cfg.get("orchestrator", {}).get("clean_tags_from_final", True):
                     final_text = clean_tags(candidate_narrative)
-                
+
                 return {
                     "status": "success",
                     "narrative": final_text,
                     "attempts": attempt + 1,
-                    "style_report": style_report
+                    "style_report": style_report,
                 }
             else:
                 # Failure Logging
                 print(colored(f"  [REJECTED] Validation failed:", "red"))
-                if not is_faithful: print(colored(f"    - Faithfulness: {reason_f}", "red"))
-                if not is_complete:  print(colored(f"    - Completeness: {reason_c}", "red"))
-                if not is_aligned:   print(colored(f"    - Alignment: Failed dimensions {style_report['failed']}", "red"))
+                if not is_faithful:
+                    print(colored(f"    - Faithfulness: {reason_f}", "red"))
+                if not is_complete:
+                    print(colored(f"    - Completeness: {reason_c}", "red"))
+                if not is_aligned:
+                    print(
+                        colored(
+                            f"    - Alignment: Failed dimensions {style_report['failed']}",
+                            "red",
+                        )
+                    )
 
-        return {"status": "failed", "narrative": "Could not verify narrative within retry limit."}
+        return {
+            "status": "failed",
+            "narrative": "Could not verify narrative within retry limit.",
+        }
+
 
 def main():
     # Load settings
-    config_file = 'src/config/config.yaml'
+    config_file = "src/config/config.yaml"
     orchestrator = XAI_Orchestrator(config_file)
 
     # Pick the most interesting case (highest risk)
     with torch.no_grad():
         X_test_t = torch.tensor(orchestrator.backend.X_test.values, dtype=torch.float32)
         probs = orchestrator.backend.model(X_test_t).numpy().flatten()
-    
+
     best_idx = int(np.argmax(probs))
-    
+
     # Run the loop
     results = orchestrator.run("test", best_idx)
 
     # FINAL OUTPUT
-    if results['status'] == "success":
-        print("\n" + colored("*"*30 + " FINAL VERIFIED NARRATIVE " + "*"*30, "green", attrs=['bold']))
-        print(results['narrative'])
-        print(colored("*"*86, "green"))
+    if results["status"] == "success":
+        print(
+            "\n"
+            + colored(
+                "*" * 30 + " FINAL VERIFIED NARRATIVE " + "*" * 30,
+                "green",
+                attrs=["bold"],
+            )
+        )
+        print(results["narrative"])
+        print(colored("*" * 86, "green"))
     else:
-        print(colored("\n[!] Pipeline Failed to produce a safe narrative.", "red", attrs=['bold']))
+        print(
+            colored(
+                "\n[!] Pipeline Failed to produce a safe narrative.",
+                "red",
+                attrs=["bold"],
+            )
+        )
+
 
 if __name__ == "__main__":
     main()
