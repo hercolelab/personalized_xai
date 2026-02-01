@@ -1,11 +1,6 @@
-import requests
 import json
 import yaml
-import os
-from dotenv import load_dotenv
-
-# Load environment variables from .env if present (project root or current dir)
-load_dotenv()
+from src.components.ollama_client import OllamaClient
 
 
 class NarrativeGenerator:
@@ -13,23 +8,7 @@ class NarrativeGenerator:
         self, model_name="gpt-oss:20b-cloud", config_path="src/prompts/prompts.yaml"
     ):
         self.model_name = model_name
-
-        # Determine if using cloud model and set API URL accordingly
-        is_cloud_model = "-cloud" in model_name or ":cloud" in model_name
-        if is_cloud_model:
-            self.api_url = "https://ollama.com/api/generate"
-            # Get API key from environment variable
-            self.api_key = os.getenv("OLLAMA_API_KEY")
-            if not self.api_key:
-                print(
-                    "[Warning] OLLAMA_API_KEY not set. Cloud models require authentication."
-                )
-                print(
-                    "[Info] Set OLLAMA_API_KEY environment variable or run 'ollama signin'"
-                )
-        else:
-            self.api_url = "http://localhost:11434/api/generate"
-            self.api_key = None
+        self.ollama = OllamaClient.from_model(self.model_name)
 
         # Load the externalized prompts
         with open(config_path, "r") as f:
@@ -159,11 +138,7 @@ class NarrativeGenerator:
         }
 
         try:
-            headers = {}
-            if self.api_key:
-                headers["Authorization"] = f"Bearer {self.api_key}"
-
-            response = requests.post(self.api_url, json=payload, headers=headers)
+            response = self.ollama.post(payload)
             response.raise_for_status()
             res_text = response.json()["response"]
 

@@ -1,13 +1,8 @@
 import re
 import json
-import requests
 import numpy as np
 import yaml
-import os
-from dotenv import load_dotenv
-
-# Load environment variables from .env if present (project root or current dir)
-load_dotenv()
+from src.components.ollama_client import OllamaClient
 
 
 class XAIVerifier:
@@ -30,23 +25,7 @@ class XAIVerifier:
                 raise
 
         self.model_name = self.cfg["verifier"].get("llm_judge_model", "llama3")
-
-        # Determine if using cloud model and set API URL accordingly
-        is_cloud_model = "-cloud" in self.model_name or ":cloud" in self.model_name
-        if is_cloud_model:
-            self.api_url = "https://ollama.com/api/generate"
-            # Get API key from environment variable
-            self.api_key = os.getenv("OLLAMA_API_KEY")
-            if not self.api_key:
-                print(
-                    "[Warning] OLLAMA_API_KEY not set. Cloud models require authentication."
-                )
-                print(
-                    "[Info] Set OLLAMA_API_KEY environment variable or run 'ollama signin'"
-                )
-        else:
-            self.api_url = "http://localhost:11434/api/generate"
-            self.api_key = None
+        self.ollama = OllamaClient.from_model(self.model_name)
 
         self.tolerances = self.cfg["verifier"].get("tolerances", {})
         self.alias_map = self.cfg["verifier"].get("alias_map", {})
@@ -59,7 +38,9 @@ class XAIVerifier:
         """
         # Allow ASCII hyphen and Unicode minus/dash (U+2011 nbh, U+2013 en dash, U+2212 minus)
         _num = r"[\d.\-\u2011\u2013\u2212]+"
-        curr_regex = re.findall(rf"\[V_START_(\w+)\]({_num})\[/V_START_\w+\]", narrative)
+        curr_regex = re.findall(
+            rf"\[V_START_(\w+)\]({_num})\[/V_START_\w+\]", narrative
+        )
         targ_regex = re.findall(rf"\[V_GOAL_(\w+)\]({_num})\[/V_GOAL_\w+\]", narrative)
         imp_regex = re.findall(rf"\[I_(\w+)\]({_num})\[/I_\w+\]", narrative)
 
@@ -73,7 +54,7 @@ class XAIVerifier:
         extracted = {
             "current": {k.upper(): _norm(v) for k, v in curr_regex},
             "target": {k.upper(): _norm(v) for k, v in targ_regex},
-            "impacts": {k.upper(): _norm(v) for k, v in imp_regex}
+            "impacts": {k.upper(): _norm(v) for k, v in imp_regex},
         }
 
         # Numerical Validation: every mentioned value must match ground truth
@@ -125,7 +106,7 @@ class XAIVerifier:
 
         # Require only features that are actually in the counterfactual (target), not other top-SHAP features
         required_features = set(actual_changes)
-        if style['perspective'] >= 0.5:
+        if style["perspective"] >= 0.5:
             mode_label = "Proactive (Changes only)"
         else:
             mode_label = "Retroactive (Changes + SHAP Drivers)"
@@ -153,7 +134,9 @@ class XAIVerifier:
                 pattern = "|".join([re.escape(n) for n in valid_names])
                 # Require [I_FEATURE]value[/I_...] to be present (allow Unicode minus/dash in value)
                 _num = r"[\d.\-\u2011\u2013\u2212]+"
-                shap_present = re.search(rf"\[I_({pattern})\]({_num})\[/I_\w+\]", narrative, re.IGNORECASE)
+                shap_present = re.search(
+                    rf"\[I_({pattern})\]({_num})\[/I_\w+\]", narrative, re.IGNORECASE
+                )
                 if not shap_present:
                     missing.add(feat)
             if target_features:
@@ -228,11 +211,7 @@ class XAIVerifier:
             "format": "json",
         }
         try:
-            headers = {}
-            if self.api_key:
-                headers["Authorization"] = f"Bearer {self.api_key}"
-
-            response = requests.post(self.api_url, json=payload, headers=headers)
+            response = self.ollama.post(payload)
             response.raise_for_status()
             return response.json()["response"]
         except:
