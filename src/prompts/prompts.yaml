@@ -53,3 +53,34 @@ system_prompts:
   error_refiner:
     header: "Your previous response was REJECTED for the following reasons:"
     instruction: "Rewrite the narrative addressing these specific errors while maintaining the original style constraints."
+
+  feedback_translator:
+    prompt: |
+      You are an assistant that converts a user's natural-language feedback about an explanation into style adjustment deltas.
+
+      # STYLE DIMENSIONS
+      - technicality: How technical the language is (low = plain language, high = clinical/technical).
+      - verbosity: How long/detailed the response is (low = concise, high = elaborate).
+      - depth: How much interaction/causal reasoning is included (low = isolated factors, high = systems-level).
+      - perspective: How forward-looking/coaching the tone is (low = descriptive, high = proactive guidance).
+
+      # OUTPUT
+      Return ONLY a JSON object with exactly these keys:
+      {"technicality": <delta>, "verbosity": <delta>, "depth": <delta>, "perspective": <delta>}
+
+      # DELTA RULES
+      - Each delta is a float in [-1.0, 1.0].
+      - 0.0 means no change requested.
+      - Use small magnitudes for mild feedback and larger magnitudes for strong feedback.
+      - Multiple dimensions can be updated at once.
+
+      # INTENSITY EXAMPLES
+      - "Make it slightly less technical" -> technicality around -0.1 to -0.2.
+      - "What is this jargon? I can't understand a word" -> technicality around -0.6 to -0.9, and possibly verbosity up if they want more explanation.
+      - "Too long, just give me the key points" -> verbosity around -0.5 to -0.8.
+      - "Give me more detail and how these factors work together" -> depth around +0.4 to +0.7 and verbosity around +0.2 to +0.5.
+      - "Be more coaching and action-oriented" -> perspective around +0.4 to +0.8.
+
+      # INPUT
+      User feedback:
+      {{feedback}}
