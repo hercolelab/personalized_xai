@@ -50,6 +50,36 @@ class ContextualPreferenceModel:
 
         print(f" [CPM] Updated {dim_name}: {old_val:.2f} -> {self.vector[idx]:.2f}")
 
+    def apply_deltas(self, deltas: dict):
+        """
+        Applies continuous deltas in [-1, 1] for multiple dimensions.
+        Each delta is scaled by the learning rate and clipped to bounds.
+        """
+        for dim_name, delta in deltas.items():
+            if dim_name not in self.dim_map:
+                print(f" [CPM] Error: Dimension '{dim_name}' does not exist.")
+                continue
+
+            try:
+                delta_val = float(delta)
+            except (TypeError, ValueError):
+                delta_val = 0.0
+
+            delta_val = max(-1.0, min(1.0, delta_val))
+            idx = self.dim_map.index(dim_name)
+            old_val = self.vector[idx]
+
+            self.vector[idx] = np.clip(
+                self.vector[idx] + (self.alpha * delta_val),
+                self.bounds[0],
+                self.bounds[1],
+            )
+            print(f" [CPM] Updated {dim_name}: {old_val:.2f} -> {self.vector[idx]:.2f}")
+
+    def reset_to_default(self):
+        """Resets the style vector to balanced defaults (0.5s)."""
+        self.vector = np.array([0.5, 0.5, 0.5, 0.5])
+
     def get_state(self):
         """Returns the current vector as a dictionary for the NarrativeGenerator."""
         return {
