@@ -46,14 +46,23 @@ class XAIVerifier:
         Ensures that whenever a value is mentioned in tags, it matches the XAI Backend output.
         Does not check presence of data; that is handled by completeness.
         """
-        curr_regex = re.findall(r"\[V_START_(\w+)\]([\d\.\-]+)\[/V_START_\w+\]", narrative)
-        targ_regex = re.findall(r"\[V_GOAL_(\w+)\]([\d\.\-]+)\[/V_GOAL_\w+\]", narrative)
-        imp_regex = re.findall(r"\[I_(\w+)\]([\d\.\-]+)\[/I_\w+\]", narrative)
+        # Allow ASCII hyphen and Unicode minus/dash (U+2011 nbh, U+2013 en dash, U+2212 minus)
+        _num = r"[\d.\-\u2011\u2013\u2212]+"
+        curr_regex = re.findall(rf"\[V_START_(\w+)\]({_num})\[/V_START_\w+\]", narrative)
+        targ_regex = re.findall(rf"\[V_GOAL_(\w+)\]({_num})\[/V_GOAL_\w+\]", narrative)
+        imp_regex = re.findall(rf"\[I_(\w+)\]({_num})\[/I_\w+\]", narrative)
+
+        def _norm(s):
+            if not s:
+                return s
+            for u in ("\u2011", "\u2013", "\u2212"):
+                s = s.replace(u, "-")
+            return s
 
         extracted = {
-            "current": {k.upper(): v for k, v in curr_regex},
-            "target": {k.upper(): v for k, v in targ_regex},
-            "impacts": {k.upper(): v for k, v in imp_regex}
+            "current": {k.upper(): _norm(v) for k, v in curr_regex},
+            "target": {k.upper(): _norm(v) for k, v in targ_regex},
+            "impacts": {k.upper(): _norm(v) for k, v in imp_regex}
         }
 
         # Numerical Validation: every mentioned value must match ground truth
@@ -92,14 +101,11 @@ class XAIVerifier:
                 if abs(float(target_val) - float(current_val)) > 0.1:
                     actual_changes.append(feat)
 
-        # Determine the required set based on Style Perspective
+        # Require only features that are actually in the counterfactual (target), not other top-SHAP features
+        required_features = set(actual_changes)
         if style['perspective'] >= 0.5:
-            required_features = set(actual_changes)
             mode_label = "Proactive (Changes only)"
         else:
-            shap_impacts = ground_truth.get('shap_impacts', {})
-            top_shap_features = list(shap_impacts.keys())[:3] if shap_impacts else []
-            required_features = set(actual_changes + top_shap_features)
             mode_label = "Retroactive (Changes + SHAP Drivers)"
 
         missing = set()
@@ -120,8 +126,9 @@ class XAIVerifier:
                 feat_upper = feat.upper()
                 valid_names = [feat_upper] + self.alias_map.get(feat_upper, [])
                 pattern = "|".join([re.escape(n) for n in valid_names])
-                # Require [I_FEATURE]value[/I_...] to be present
-                shap_present = re.search(rf"\[I_({pattern})\]([\d\.\-]+)\[/I_\w+\]", narrative, re.IGNORECASE)
+                # Require [I_FEATURE]value[/I_...] to be present (allow Unicode minus/dash in value)
+                _num = r"[\d.\-\u2011\u2013\u2212]+"
+                shap_present = re.search(rf"\[I_({pattern})\]({_num})\[/I_\w+\]", narrative, re.IGNORECASE)
                 if not shap_present:
                     missing.add(feat)
             if target_features:

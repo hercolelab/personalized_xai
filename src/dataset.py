@@ -15,7 +15,7 @@ def clean_dataset(dataset_name):
     
     if dataset_name == "diabetes":
         # Load diabetes.csv from main directory
-        input_path = os.path.join(main_dir, "diabetes.csv")
+        input_path = os.path.join(main_dir, "data/diabetes.csv")
         
         if not os.path.exists(input_path):
             raise FileNotFoundError(f"Dataset file not found: {input_path}")

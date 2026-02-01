@@ -1,7 +1,7 @@
 seed: 42 
 
 data:
-  csv_path: "diabetes_cleaned.csv"
+  csv_path: "data/diabetes_cleaned.csv"
   target: "Outcome"
   test_size: 0.2
   actionable_features: ['Glucose', 'BMI', 'Insulin', 'BloodPressure']
@@ -24,7 +24,7 @@ personas:
   patient: [0.2, 0.8, 0.8, 0.8]   # Simple, Action-oriented
   clinician: [0.8, 0.2, 0.2, 0.8] # High Tech, Cause-oriented
   balanced: [0.5, 0.5, 0.5, 0.5] # Balanced analysis
-  test: [0.8, 0.5, 0.5, 0.8] # Test style
+  test: [0.8, 0.5, 0.8, 0.2] # Test style
 
 cpm:
   learning_rate: 0.2
