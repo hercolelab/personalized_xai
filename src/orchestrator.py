@@ -9,6 +9,7 @@ from src.components.b_cpm import ContextualPreferenceModel
 from src.components.c_generator import NarrativeGenerator
 from src.components.d_verifiers import XAIVerifier
 from src.components.e_feedback_translator import FeedbackTranslator
+from src.components.f_refiner import NarrativeRefiner
 
 
 def clean_tags(text):
@@ -37,6 +38,13 @@ class XAI_Orchestrator:
             model_name=self.cfg["verifier"].get("llm_judge_model", "llama3.1:8b")
         )
         self.verifier = XAIVerifier(config_path)
+
+        # Initialize refiner if enabled
+        self.refiner_enabled = self.cfg.get("refiner", {}).get("enabled", True)
+        if self.refiner_enabled:
+            self.refiner = NarrativeRefiner(
+                model_name=self.cfg["verifier"].get("llm_judge_model", "llama3.1:8b")
+            )
 
         self.max_retries = self.cfg.get("orchestrator", {}).get("max_retries", 5)
 
@@ -71,7 +79,8 @@ class XAI_Orchestrator:
         )
 
         # 3. REJECTION SAMPLING LOOP
-        last_hint = None
+        last_narrative = None
+        last_failures = None
         for attempt in range(self.max_retries):
             print(
                 colored(
@@ -80,11 +89,20 @@ class XAI_Orchestrator:
                 )
             )
 
-            # A. GENERATION
-            # We pass the ground_truth dict to the narrator for better precision
-            candidate_narrative = self.narrator.generate(
-                ground_truth, target_style, hint=last_hint if attempt > 0 else None
-            )
+            # A. GENERATION or REFINEMENT
+            if attempt == 0:
+                candidate_narrative = self.narrator.generate(ground_truth, target_style)
+            elif self.refiner_enabled and last_narrative and last_failures:
+                print(colored("  [Refiner] Refining previous narrative...", "cyan"))
+                candidate_narrative = self.refiner.refine(
+                    current_narrative=last_narrative,
+                    raw_data=ground_truth,
+                    target_style=target_style,
+                    failures=last_failures,
+                )
+            else:
+                # Fallback: regenerate (backward compatibility)
+                candidate_narrative = self.narrator.generate(ground_truth, target_style)
 
             # PRINT CANDIDATE NARRATIVE
             print(colored(f"-" * 15 + " CANDIDATE NARRATIVE " + "-" * 15, "yellow"))
@@ -126,13 +144,10 @@ class XAI_Orchestrator:
             else:
                 # Failure Logging
                 print(colored(f"  [REJECTED] Validation failed:", "red"))
-                errors_for_next_attempt = []
                 if not is_faithful:
                     print(colored(f"    - Faithfulness: {reason_f}", "red"))
-                    errors_for_next_attempt.append(f"Faithfulness: {reason_f}")
                 if not is_complete:
                     print(colored(f"    - Completeness: {reason_c}", "red"))
-                    errors_for_next_attempt.append(f"Completeness: {reason_c}")
                 if not is_aligned:
                     failed_dims = (
                         style_report.get("failed")
@@ -145,16 +160,13 @@ class XAI_Orchestrator:
                             "red",
                         )
                     )
-                    errors_for_next_attempt.append(
-                        f"Alignment: Failed dimensions {failed_dims}"
-                    )
 
-                # Hint for the generator on the next attempt (single string)
-                last_hint = (
-                    "\n".join(errors_for_next_attempt)
-                    if errors_for_next_attempt
-                    else None
-                )
+                last_narrative = candidate_narrative
+                last_failures = {
+                    "faithfulness": {"passed": is_faithful, "reason": reason_f},
+                    "completeness": {"passed": is_complete, "reason": reason_c},
+                    "alignment": {"passed": is_aligned, "report": style_report},
+                }
 
         return {
             "status": "failed",
@@ -182,10 +194,17 @@ class HumanInteractiveOrchestrator:
         self.verifier = XAIVerifier(config_path)
         self.feedback_translator = FeedbackTranslator(config_path)
 
+        self.refiner_enabled = self.cfg.get("refiner", {}).get("enabled", True)
+        if self.refiner_enabled:
+            self.refiner = NarrativeRefiner(
+                model_name=self.cfg["verifier"].get("llm_judge_model", "llama3.1:8b")
+            )
+
         self.max_retries = self.cfg.get("orchestrator", {}).get("max_retries", 5)
 
     def _generate_verified(self, ground_truth, target_style):
-        last_hint = None
+        last_narrative = None
+        last_failures = None
         for attempt in range(self.max_retries):
             print(
                 colored(
@@ -194,9 +213,18 @@ class HumanInteractiveOrchestrator:
                 )
             )
 
-            candidate_narrative = self.narrator.generate(
-                ground_truth, target_style, hint=last_hint if attempt > 0 else None
-            )
+            if attempt == 0:
+                candidate_narrative = self.narrator.generate(ground_truth, target_style)
+            elif self.refiner_enabled and last_narrative and last_failures:
+                print(colored("  [Refiner] Refining previous narrative...", "cyan"))
+                candidate_narrative = self.refiner.refine(
+                    current_narrative=last_narrative,
+                    raw_data=ground_truth,
+                    target_style=target_style,
+                    failures=last_failures,
+                )
+            else:
+                candidate_narrative = self.narrator.generate(ground_truth, target_style)
 
             print(colored(f"-" * 15 + " CANDIDATE NARRATIVE " + "-" * 15, "yellow"))
             print(candidate_narrative)
@@ -233,13 +261,10 @@ class HumanInteractiveOrchestrator:
                 }
             else:
                 print(colored("  [REJECTED] Validation failed:", "red"))
-                errors_for_next_attempt = []
                 if not is_faithful:
                     print(colored(f"    - Faithfulness: {reason_f}", "red"))
-                    errors_for_next_attempt.append(f"Faithfulness: {reason_f}")
                 if not is_complete:
                     print(colored(f"    - Completeness: {reason_c}", "red"))
-                    errors_for_next_attempt.append(f"Completeness: {reason_c}")
                 if not is_aligned:
                     failed_dims = (
                         style_report.get("failed")
@@ -252,16 +277,13 @@ class HumanInteractiveOrchestrator:
                             "red",
                         )
                     )
-                    errors_for_next_attempt.append(
-                        f"Alignment: Failed dimensions {failed_dims}"
-                    )
 
-                # Hint for the generator on the next attempt (single string)
-                last_hint = (
-                    "\n".join(errors_for_next_attempt)
-                    if errors_for_next_attempt
-                    else None
-                )
+                last_narrative = candidate_narrative
+                last_failures = {
+                    "faithfulness": {"passed": is_faithful, "reason": reason_f},
+                    "completeness": {"passed": is_complete, "reason": reason_c},
+                    "alignment": {"passed": is_aligned, "report": style_report},
+                }
 
         return {
             "status": "failed",

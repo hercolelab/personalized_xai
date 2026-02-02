@@ -69,4 +69,8 @@ orchestrator:
   max_steps: 20
   clean_tags_from_final: true
   test_role: "patient" # Default role for main test
-  eval_alignment_tolerance: 0.20
+  eval_alignment_tolerance: 0.1
+
+refiner:
+  enabled: true  # Set to false to fall back to hint-based mechanism
+  max_refine_attempts: 3  # Max consecutive refinement attempts before regenerating

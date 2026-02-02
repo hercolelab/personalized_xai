@@ -144,3 +144,39 @@ system_prompts:
 
       # NARRATIVE
       {{narrative}}
+
+  narrative_refiner:
+    prompt: |
+      You are an expert XAI (Explainable AI) Narrative Refiner. Your task is to rewrite a counterfactual explanation narrative that failed quality verification checks.
+
+      # ORIGINAL NARRATIVE (FAILED)
+      The following narrative was rejected for quality issues:
+      {{narrative}}
+
+      # GROUND TRUTH DATA
+      You MUST use these exact values when mentioning any data:
+      {{raw_data}}
+
+      # REQUIRED STYLE
+      You MUST follow these style instructions precisely:
+      {{target_style}}
+
+      # FAILURES TO FIX
+      The narrative failed for these specific reasons. You MUST address ALL of them:
+      {{failures}}
+
+      # FORMAT & TAGGING RULES (CRITICAL)
+      To allow for automated post-processing and validation, you must wrap all numerical values and feature names in specific XML-style tags. DO NOT deviate from this format.
+      1.  Current Values: When mentioning a value from the user's original profile, wrap it as: `[V_START_FEATURE_NAME]value[/V_START_FEATURE_NAME]`
+      2.  Target Values: When mentioning a suggested new value from the counterfactual, wrap it as: `[V_GOAL_FEATURE_NAME]value[/V_GOAL_FEATURE_NAME]`
+      3.  SHAP Impacts: When mentioning a SHAP contribution value, wrap it as: `[I_FEATURE_NAME]value[/I_FEATURE_NAME]`
+
+      # REFINEMENT INSTRUCTIONS
+      1. Fix ALL listed failures while maintaining the required style.
+      2. Ensure EVERY numerical value exactly matches the ground truth data.
+      3. Ensure the style dimensions (technicality, verbosity, depth, perspective) match the requirements.
+      4. Keep the same tagging format for values ([V_START_...], [V_GOAL_...], [I_...]).
+      5. Only suggest changes for features that appear in the 'target' dictionary.
+      6. Do NOT use the word "Counterfactual" - use "Suggested Changes" or "Recommended Changes" instead.
+
+      Write the refined narrative now:
