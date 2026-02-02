@@ -85,7 +85,7 @@ class AgentJudgeEvaluator:
 
     def _build_graph(self, persona_name: str, target_vector: np.ndarray, ground_truth):
         def generate_narrative(state: EvalState):
-            if state["done"]:
+            if state["done"] or state.get("error"):
                 return {}
 
             print(
@@ -94,6 +94,9 @@ class AgentJudgeEvaluator:
             target_style = self.orchestrator.cpm.get_state()
             results = self.orchestrator._generate_verified(ground_truth, target_style)
             if results["status"] != "success":
+                print(
+                    f"[Eval] ERROR: Generation failed - {results.get('narrative', 'unknown error')}"
+                )
                 return {
                     "done": True,
                     "error": "generation_failed",
@@ -101,7 +104,7 @@ class AgentJudgeEvaluator:
             return {"narrative": results["narrative"]}
 
         def persona_feedback(state: EvalState):
-            if state["done"]:
+            if state["done"] or state.get("error"):
                 return {}
 
             feedback = self.feedback_agent.generate(
@@ -111,8 +114,12 @@ class AgentJudgeEvaluator:
             return {"feedback": feedback}
 
         def apply_feedback(state: EvalState):
-            if state["done"]:
+            if state["done"] or state.get("error"):
                 return {}
+
+            if not state.get("feedback"):
+                print("[Eval] ERROR: No feedback available to apply")
+                return {"done": True, "error": "missing_feedback"}
 
             self.orchestrator.apply_feedback(state["feedback"])
             diffs = np.abs(self.orchestrator.cpm.vector - target_vector)
@@ -122,6 +129,10 @@ class AgentJudgeEvaluator:
             return {"step": state["step"] + 1}
 
         def check_satisfied(state: EvalState):
+            if state.get("error"):
+                print(f"[Eval] ERROR: Stopping due to error - {state['error']}")
+                return {"done": True, "should_finalize": False}
+
             if state["done"]:
                 return {"done": True, "should_finalize": False}
 
@@ -138,9 +149,16 @@ class AgentJudgeEvaluator:
             return {"done": False, "should_finalize": False}
 
         def final_generate(state: EvalState):
+            if state.get("error"):
+                print(f"[Eval] ERROR: Cannot finalize due to error - {state['error']}")
+                return {}
+
             target_style = self.orchestrator.cpm.get_state()
             results = self.orchestrator._generate_verified(ground_truth, target_style)
             if results["status"] != "success":
+                print(
+                    f"[Eval] ERROR: Final generation failed - {results.get('narrative', 'unknown error')}"
+                )
                 return {
                     "done": True,
                     "should_finalize": False,
@@ -202,7 +220,13 @@ class AgentJudgeEvaluator:
                 print("\n" + "*" * 30 + " FINAL VERIFIED NARRATIVE " + "*" * 30)
                 print(results["narrative"])
                 print("*" * 86)
-            return 0
+                return 0
+            else:
+                print(
+                    f"[Eval] ERROR: Generation failed even though alignment satisfied - {results.get('narrative', 'unknown error')}"
+                )
+                print("[Eval] Cannot proceed with evaluation.")
+                return -1
 
         graph = self._build_graph(persona_name, target_vector, ground_truth)
         initial_state: EvalState = {
@@ -216,6 +240,11 @@ class AgentJudgeEvaluator:
             "error": "",
         }
         result = graph.invoke(initial_state)
+
+        if result.get("error"):
+            print(f"[Eval] ERROR: Workflow failed with error: {result['error']}")
+            return -1
+
         return int(result.get("step", 0))
 
 
