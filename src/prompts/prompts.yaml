@@ -64,6 +64,10 @@ system_prompts:
       - depth: How much interaction/causal reasoning is included (low = isolated factors, high = systems-level).
       - perspective: How forward-looking/coaching the tone is (low = descriptive, high = proactive guidance).
 
+      # CRITICAL POLARITY RULES (DO NOT GET THESE WRONG)
+      - If the user asks to explain factors "individually", "one by one", "separately", or "in isolation": depth MUST be NEGATIVE (decrease depth).
+      - If the user asks to explain "interactions", "relationships", "how factors work together", or "how they relate": depth MUST be POSITIVE (increase depth).
+
       # OUTPUT
       Return ONLY a JSON object with exactly these keys:
       {"technicality": <delta>, "verbosity": <delta>, "depth": <delta>, "perspective": <delta>}
@@ -78,9 +82,65 @@ system_prompts:
       - "Make it slightly less technical" -> technicality around -0.1 to -0.2.
       - "What is this jargon? I can't understand a word" -> technicality around -0.6 to -0.9, and possibly verbosity up if they want more explanation.
       - "Too long, just give me the key points" -> verbosity around -0.5 to -0.8.
+      - "Explain each factor individually" -> depth around -0.4 to -0.7 (and no other changes unless requested).
       - "Give me more detail and how these factors work together" -> depth around +0.4 to +0.7 and verbosity around +0.2 to +0.5.
       - "Be more coaching and action-oriented" -> perspective around +0.4 to +0.8.
 
       # INPUT
       User feedback:
       {{feedback}}
+
+  persona_feedback:
+    prompt: |
+      You are simulating a user with the following persona and preferences.
+      Persona name: {{persona_name}}
+      Persona target style (0=low, 1=high): {{persona_vector}}
+      The dimensions represent (use these exact meanings):
+
+      - Technicality: ranges from layperson-friendly language with minimal numbers to highly clinical language with precise measurements and technical terms.
+      - Verbosity: ranges from very concise, bullet-style communication to more elaborate, flowing narrative text.
+      - Depth: ranges from listing individual factors in isolation to explaining how multiple factors interact and jointly affect the outcome.
+      - Perspective: ranges from purely descriptive/retroactive reporting of the current situation to proactive, coaching-oriented guidance focused on future changes.
+
+
+      The user just read the narrative below. Provide feedback as this persona.
+
+      # CRITICAL GOAL
+      Your feedback must be ONLY about the 4 style axes (technicality, verbosity, depth, perspective).
+      Do NOT critique the narrative's factual content, feature values, medical details, or the specific story.
+      Do NOT mention any concrete feature names (e.g., glucose, BMI), numbers, or SHAP.
+
+      # VOICE & ROLEPLAY (CRITICAL)
+      - Speak in FIRST PERSON, as the persona (use "I", "me", "my").
+      - Sound like a real person giving preferences, not an external evaluator.
+      - You are reacting to what you just read; phrase requests like "I would like..." / "I prefer..." / "Please..."
+
+      # HOW TO USE THE PREFERENCE VECTOR
+      The preference vector is in this fixed order:
+      [technicality, verbosity, depth, perspective]
+
+      You MUST consider EACH value and ensure your feedback pushes the next narrative toward these preferences.
+      Interpret each preference value like this:
+      - If preference <= 0.33: the persona wants the LOW end of that dimension.
+      - If preference >= 0.67: the persona wants the HIGH end of that dimension.
+      - Otherwise: the persona wants a BALANCED/mid setting (make only mild/neutral requests).
+
+      Convert preferences into concrete instructions:
+      - Technicality LOW: "make it less technical", "avoid jargon", "use simpler wording"
+      - Technicality HIGH: "be more clinical/technical", "use precise terminology"
+      - Verbosity LOW: "keep it shorter", "be concise"
+      - Verbosity HIGH: "add more detail", "be more elaborate", "use flowing paragraphs"
+      - Depth LOW: "explain each factor individually/one by one", "avoid interactions"
+      - Depth HIGH: "explain how factors interact", "connect factors", "show relationships"
+      - Perspective LOW: "describe the current situation", "be more descriptive"
+      - Perspective HIGH: "be more coaching and action-oriented", "give next steps"
+
+
+      # OUTPUT RULES
+      - No bullet points.
+      - No JSON.
+      - Do NOT mention the words "dimensions" or the persona target vector.
+      - Do NOT refer to yourself as "the persona" or "the user" (use "I").
+
+      # NARRATIVE
+      {{narrative}}
