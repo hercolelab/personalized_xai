@@ -9,36 +9,53 @@ class NarrativeRefiner:
     """
 
     def __init__(
-        self, model_name="gpt-oss:20b-cloud", config_path="src/prompts/prompts.yaml"
+        self,
+        model_name="gpt-oss:20b-cloud",
+        config_path="src/config/config.yaml",
+        prompt_path="src/prompts/prompts.yaml",
     ):
         self.model_name = model_name
         self.ollama = OllamaClient.from_model(self.model_name)
 
         with open(config_path, "r") as f:
+            self.cfg = yaml.safe_load(f)
+
+        with open(prompt_path, "r") as f:
             full_config = yaml.safe_load(f)
             self.prompt_template = full_config["system_prompts"]["narrative_refiner"][
                 "prompt"
             ]
 
+    def _format_rubric(self) -> str:
+        """Format the verifier rubric from config.yaml for use in the refiner prompt."""
+        rubric_str = ""
+
+        verifier_rubric = self.cfg.get("verifier", {}).get("verifier_rubric", {})
+
+        for dim, config in verifier_rubric.items():
+            levels_formatted = "\n".join(
+                [f"  - {val}: {desc}" for val, desc in config.get("levels", {}).items()]
+            )
+            rubric_str += f"\n## {dim.upper()}\n{levels_formatted}\n"
+
+        return rubric_str.strip()
+
     def _format_failures(self, failures: dict) -> str:
         """Format the failures dictionary into a readable string for the LLM."""
         failure_lines = []
 
-        # Faithfulness failures
         if not failures.get("faithfulness", {}).get("passed", True):
             reason = failures["faithfulness"].get(
                 "reason", "Unknown faithfulness issue"
             )
             failure_lines.append(f"FAITHFULNESS ERROR: {reason}")
 
-        # Completeness failures
         if not failures.get("completeness", {}).get("passed", True):
             reason = failures["completeness"].get(
                 "reason", "Unknown completeness issue"
             )
             failure_lines.append(f"COMPLETENESS ERROR: {reason}")
 
-        # Alignment failures
         if not failures.get("alignment", {}).get("passed", True):
             report = failures["alignment"].get("report", {})
             if isinstance(report, dict):
@@ -61,67 +78,16 @@ class NarrativeRefiner:
             else "No specific failures listed."
         )
 
-    def _get_style_instructions(self, style: dict) -> str:
-        """Convert style dictionary to human-readable instructions."""
-        instructions = []
-
-        # Technicality
-        if style["technicality"] < 0.4:
-            instructions.append(
-                "TECHNICALITY: Use plain, accessible language. Avoid jargon. Do NOT use SHAP values."
-            )
-        elif style["technicality"] > 0.7:
-            instructions.append(
-                "TECHNICALITY: Use clinical/technical language. Include SHAP values with precise measurements."
-            )
-        else:
-            instructions.append(
-                "TECHNICALITY: Use balanced language with some technical terms. Do NOT use SHAP values."
-            )
-
-        # Verbosity
-        if style["verbosity"] < 0.4:
-            instructions.append(
-                "VERBOSITY: Be concise. Use bullet points. Short sentences only."
-            )
-        elif style["verbosity"] > 0.7:
-            instructions.append(
-                "VERBOSITY: Use flowing narrative paragraphs. NO bullet points. Use transition words."
-            )
-        else:
-            instructions.append(
-                "VERBOSITY: Use standard paragraphs or mixed formatting."
-            )
-
-        # Depth
-        if style["depth"] < 0.4:
-            instructions.append(
-                "DEPTH: Analyze features in isolation (one by one). Do not explain interactions."
-            )
-        elif style["depth"] > 0.7:
-            instructions.append(
-                "DEPTH: Provide deep systemic analysis. Explain how features interact with each other."
-            )
-        else:
-            instructions.append(
-                "DEPTH: Acknowledge multiple features contribute but avoid detailed interaction analysis."
-            )
-
-        # Perspective
-        if style["perspective"] < 0.4:
-            instructions.append(
-                "PERSPECTIVE: Be descriptive/retroactive. Explain the current situation."
-            )
-        elif style["perspective"] > 0.7:
-            instructions.append(
-                "PERSPECTIVE: Be proactive/coaching. Frame as action plan with future-oriented guidance."
-            )
-        else:
-            instructions.append(
-                "PERSPECTIVE: Balance descriptive reporting with some forward-looking statements."
-            )
-
-        return "\n".join(instructions)
+    def _format_target_style(self, style: dict) -> str:
+        """Format the target style values for display in the prompt."""
+        return "\n".join(
+            [
+                f"- Technicality: {style['technicality']}",
+                f"- Verbosity: {style['verbosity']}",
+                f"- Depth: {style['depth']}",
+                f"- Perspective: {style['perspective']}",
+            ]
+        )
 
     def refine(
         self,
@@ -147,13 +113,15 @@ class NarrativeRefiner:
         """
 
         formatted_failures = self._format_failures(failures)
-        style_instructions = self._get_style_instructions(target_style)
+        target_style_formatted = self._format_target_style(target_style)
+        rubric_formatted = self._format_rubric()
         data_json = json.dumps(raw_data, indent=2)
 
         prompt = self.prompt_template.replace("{{narrative}}", current_narrative)
         prompt = prompt.replace("{{raw_data}}", data_json)
-        prompt = prompt.replace("{{target_style}}", style_instructions)
+        prompt = prompt.replace("{{target_style}}", target_style_formatted)
         prompt = prompt.replace("{{failures}}", formatted_failures)
+        prompt = prompt.replace("{{rubric}}", rubric_formatted)
 
         payload = {
             "model": self.model_name,

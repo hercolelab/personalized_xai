@@ -157,13 +157,18 @@ system_prompts:
       You MUST use these exact values when mentioning any data:
       {{raw_data}}
 
-      # REQUIRED STYLE
-      You MUST follow these style instructions precisely:
+      # TARGET STYLE VALUES
+      Your narrative must match these target style values. Refer to the RUBRIC below to understand what each value means:
       {{target_style}}
 
       # FAILURES TO FIX
       The narrative failed for these specific reasons. You MUST address ALL of them:
       {{failures}}
+
+      # STYLE RUBRIC GUIDELINES
+      The narrative will be evaluated against these exact rubric criteria. Pay extremely close attention to match these requirements:
+      
+      {{rubric}}
 
       # FORMAT & TAGGING RULES (CRITICAL)
       To allow for automated post-processing and validation, you must wrap all numerical values and feature names in specific XML-style tags. DO NOT deviate from this format.
@@ -174,7 +179,7 @@ system_prompts:
       # REFINEMENT INSTRUCTIONS
       1. Fix ALL listed failures while maintaining the required style.
       2. Ensure EVERY numerical value exactly matches the ground truth data.
-      3. Ensure the style dimensions (technicality, verbosity, depth, perspective) match the requirements.
+      3. Pay special attention to alignment failures - match the exact rubric level requirements shown above.
       4. Keep the same tagging format for values ([V_START_...], [V_GOAL_...], [I_...]).
       5. Only suggest changes for features that appear in the 'target' dictionary.
       6. Do NOT use the word "Counterfactual" - use "Suggested Changes" or "Recommended Changes" instead.
