@@ -4,11 +4,11 @@ import argparse
 import torch
 import numpy as np
 from termcolor import colored
-from components.a_setup_xai import XAI_Backend
-from components.b_cpm import ContextualPreferenceModel
-from components.c_generator import NarrativeGenerator
-from components.d_verifiers import XAIVerifier
-from components.e_feedback_translator import FeedbackTranslator
+from src.components.a_setup_xai import XAI_Backend
+from src.components.b_cpm import ContextualPreferenceModel
+from src.components.c_generator import NarrativeGenerator
+from src.components.d_verifiers import XAIVerifier
+from src.components.e_feedback_translator import FeedbackTranslator
 
 
 def clean_tags(text):
@@ -71,6 +71,7 @@ class XAI_Orchestrator:
         )
 
         # 3. REJECTION SAMPLING LOOP
+        last_hint = None
         for attempt in range(self.max_retries):
             print(
                 colored(
@@ -81,7 +82,9 @@ class XAI_Orchestrator:
 
             # A. GENERATION
             # We pass the ground_truth dict to the narrator for better precision
-            candidate_narrative = self.narrator.generate(ground_truth, target_style)
+            candidate_narrative = self.narrator.generate(
+                ground_truth, target_style, hint=last_hint if attempt > 0 else None
+            )
 
             # PRINT CANDIDATE NARRATIVE
             print(colored(f"-" * 15 + " CANDIDATE NARRATIVE " + "-" * 15, "yellow"))
@@ -123,17 +126,35 @@ class XAI_Orchestrator:
             else:
                 # Failure Logging
                 print(colored(f"  [REJECTED] Validation failed:", "red"))
+                errors_for_next_attempt = []
                 if not is_faithful:
                     print(colored(f"    - Faithfulness: {reason_f}", "red"))
+                    errors_for_next_attempt.append(f"Faithfulness: {reason_f}")
                 if not is_complete:
                     print(colored(f"    - Completeness: {reason_c}", "red"))
+                    errors_for_next_attempt.append(f"Completeness: {reason_c}")
                 if not is_aligned:
+                    failed_dims = (
+                        style_report.get("failed")
+                        if isinstance(style_report, dict)
+                        else style_report
+                    )
                     print(
                         colored(
-                            f"    - Alignment: Failed dimensions {style_report['failed']}",
+                            f"    - Alignment: Failed dimensions {failed_dims}",
                             "red",
                         )
                     )
+                    errors_for_next_attempt.append(
+                        f"Alignment: Failed dimensions {failed_dims}"
+                    )
+
+                # Hint for the generator on the next attempt (single string)
+                last_hint = (
+                    "\n".join(errors_for_next_attempt)
+                    if errors_for_next_attempt
+                    else None
+                )
 
         return {
             "status": "failed",
@@ -164,6 +185,7 @@ class HumanInteractiveOrchestrator:
         self.max_retries = self.cfg.get("orchestrator", {}).get("max_retries", 5)
 
     def _generate_verified(self, ground_truth, target_style):
+        last_hint = None
         for attempt in range(self.max_retries):
             print(
                 colored(
@@ -172,7 +194,9 @@ class HumanInteractiveOrchestrator:
                 )
             )
 
-            candidate_narrative = self.narrator.generate(ground_truth, target_style)
+            candidate_narrative = self.narrator.generate(
+                ground_truth, target_style, hint=last_hint if attempt > 0 else None
+            )
 
             print(colored(f"-" * 15 + " CANDIDATE NARRATIVE " + "-" * 15, "yellow"))
             print(candidate_narrative)
@@ -209,17 +233,35 @@ class HumanInteractiveOrchestrator:
                 }
             else:
                 print(colored("  [REJECTED] Validation failed:", "red"))
+                errors_for_next_attempt = []
                 if not is_faithful:
                     print(colored(f"    - Faithfulness: {reason_f}", "red"))
+                    errors_for_next_attempt.append(f"Faithfulness: {reason_f}")
                 if not is_complete:
                     print(colored(f"    - Completeness: {reason_c}", "red"))
+                    errors_for_next_attempt.append(f"Completeness: {reason_c}")
                 if not is_aligned:
+                    failed_dims = (
+                        style_report.get("failed")
+                        if isinstance(style_report, dict)
+                        else style_report
+                    )
                     print(
                         colored(
-                            f"    - Alignment: Failed dimensions {style_report['failed']}",
+                            f"    - Alignment: Failed dimensions {failed_dims}",
                             "red",
                         )
                     )
+                    errors_for_next_attempt.append(
+                        f"Alignment: Failed dimensions {failed_dims}"
+                    )
+
+                # Hint for the generator on the next attempt (single string)
+                last_hint = (
+                    "\n".join(errors_for_next_attempt)
+                    if errors_for_next_attempt
+                    else None
+                )
 
         return {
             "status": "failed",
