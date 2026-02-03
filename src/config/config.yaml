@@ -1,7 +1,7 @@
 seed: 42
 
 data:
-  csv_path: "data/diabetes_cleaned.csv"
+  csv_path: "data/raw/diabetes_cleaned.csv"
   target: "Outcome"
   test_size: 0.2
   actionable_features: ["Glucose", "BMI", "Insulin", "BloodPressure"]

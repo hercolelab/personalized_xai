@@ -15,8 +15,8 @@ def clean_dataset(dataset_name):
 
     if dataset_name == "diabetes":
         # Load diabetes.csv from main directory
-        input_path = os.path.join(main_dir, "data/diabetes.csv")
-
+        input_path = os.path.join(main_dir, "data/raw/diabetes.csv")
+        
         if not os.path.exists(input_path):
             raise FileNotFoundError(f"Dataset file not found: {input_path}")
 
@@ -36,7 +36,7 @@ def clean_dataset(dataset_name):
         df_cleaned = df[~((df[columns_to_check] == 0).any(axis=1))]
 
         # Save the cleaned dataset
-        output_path = os.path.join(main_dir, f"{dataset_name}_cleaned.csv")
+        output_path = os.path.join(main_dir, "data/raw/diabetes_cleaned.csv")
         df_cleaned.to_csv(output_path, index=False)
 
         print(f"Cleaned dataset saved to: {output_path}")
