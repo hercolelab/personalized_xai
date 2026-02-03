@@ -2,41 +2,40 @@
 """
 Knowledge Base Filter Script for RAG Pipeline
 
-This script processes PDFs from data/docs/{dataset-name}, extracts text,
-creates token-based chunks (300-500 tokens with overlap), and uses vLLM
-to filter chunks that contain useful information for natural language explanations.
+This script processes text files from data/docs/{dataset-name}, creates token-based 
+chunks (300-500 tokens with overlap), and uses Ollama to filter chunks that contain 
+useful information for natural language explanations.
 """
 
 import argparse
 import json
 import os
+import re
+import requests
 from pathlib import Path
-from typing import List, Dict, Optional, Any
-from pypdf import PdfReader
+from typing import List, Dict, Optional, Any, Tuple
 from transformers import AutoTokenizer
-from vllm import LLM, SamplingParams
+from dotenv import load_dotenv
+
+# Load environment variables from .env if present (project root or current dir)
+load_dotenv()
 
 
-def extract_text_from_pdf(pdf_path: str) -> str:
+def load_text_from_file(txt_path: str) -> str:
     """
-    Extract text from a PDF file.
+    Load text from a text file.
     
     Args:
-        pdf_path: Path to the PDF file
+        txt_path: Path to the text file
         
     Returns:
-        Extracted text as a string
+        Text content as a string
     """
     try:
-        reader = PdfReader(pdf_path)
-        text_parts = []
-        for page in reader.pages:
-            text = page.extract_text()
-            if text:
-                text_parts.append(text)
-        return "\n\n".join(text_parts)
+        with open(txt_path, 'r', encoding='utf-8') as f:
+            return f.read()
     except Exception as e:
-        raise Exception(f"Error extracting text from {pdf_path}: {str(e)}")
+        raise Exception(f"Error loading text from {txt_path}: {str(e)}")
 
 
 def create_token_chunks(
@@ -96,111 +95,225 @@ def create_token_chunks(
 
 
 def filter_chunk_with_llm(
-    llm: LLM,
+    model_name: str,
     chunk_text: str,
-    prompt_template: str
-) -> bool:
+    prompt_template: str,
+    api_url: str,
+    api_key: Optional[str] = None
+) -> Tuple[bool, str]:
     """
-    Use vLLM to determine if a chunk contains useful information.
+    Use Ollama to determine if a chunk contains useful information.
     
     Args:
-        llm: Initialized vLLM LLM instance
+        model_name: Ollama model name (e.g., 'llama3', 'gpt-oss:20b-cloud')
         chunk_text: Text chunk to evaluate
         prompt_template: Prompt template with {chunk_text} placeholder
+        api_url: Ollama API URL (local or cloud)
+        api_key: Optional API key for cloud models
         
     Returns:
-        True if chunk is useful, False otherwise
+        Tuple of (is_useful: bool, response_text: str)
     """
     # Format the prompt
     prompt = prompt_template.format(chunk_text=chunk_text)
     
-    # Create sampling parameters
-    sampling_params = SamplingParams(
-        temperature=0.1,  # Low temperature for deterministic yes/no
-        max_tokens=10,     # Only need yes/no response
-        stop=None
-    )
+    payload = {
+        "model": model_name,
+        "prompt": prompt,
+        "stream": False,
+        "options": { "temperature": 0 }
+    }
     
-    # Generate response
-    outputs = llm.generate([prompt], sampling_params)
-    
-    # Extract response
-    if outputs and len(outputs) > 0:
-        response = outputs[0].outputs[0].text.strip().lower()
-        # Check if response indicates usefulness
-        return "yes" in response or "true" in response or "1" in response
-    
-    return False
+    try:
+        headers = {}
+        if api_key:
+            headers['Authorization'] = f'Bearer {api_key}'
+        
+        response = requests.post(api_url, json=payload, headers=headers)
+        response.raise_for_status()
+        response_text = response.json()['response']
+        
+        if response_text:
+            response = str(response_text).strip()
+            
+            # Try to extract JSON from the response
+            try:
+                # Look for JSON object in the response (handle nested braces)
+                # Find the first { and try to match balanced braces
+                start_idx = response.find('{')
+                if start_idx != -1:
+                    brace_count = 0
+                    end_idx = start_idx
+                    for i in range(start_idx, len(response)):
+                        char = response[i]
+                        if char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                end_idx = i + 1
+                                break
+                    
+                    if brace_count == 0:
+                        json_str = response[start_idx:end_idx].strip()
+                        result = json.loads(json_str)
+                        final_answer = result.get('final_answer', '').strip().lower()
+                        # Handle both "Yes"/"No" and "yes"/"no"
+                        is_useful = final_answer in ["yes", "y"]
+                        return (is_useful, response)
+            except (json.JSONDecodeError, AttributeError, KeyError, ValueError) as e:
+                # If JSON parsing fails, continue to fallback methods
+                pass
+            
+            # Fallback: Look for the old format # FINAL ANSWER: Yes/No
+            final_answer_match = re.search(
+                r'#\s*FINAL\s+ANSWER:\s*(Yes|No|yes|no|YES|NO)',
+                response,
+                re.IGNORECASE | re.MULTILINE
+            )
+            
+            if final_answer_match:
+                answer = final_answer_match.group(1).lower()
+                is_useful = answer == "yes"
+                return (is_useful, response)
+            
+            # Final fallback: check for yes/no in response
+            response_lower = response.lower()
+            is_useful = "yes" in response_lower or "true" in response_lower or "1" in response_lower
+            return (is_useful, response)
+        
+        return (False, "")
+    except Exception as e:
+        error_msg = f"Error calling Ollama: {str(e)}"
+        print(f"    Warning: {error_msg}")
+        return (False, error_msg)
 
 
-def process_pdfs(
+def process_txt_files(
     dataset_name: str,
-    model_name: str = "QuantTrio/Qwen3-30B-A3B-Thinking-2507-AWQ",
+    model_name: str = "gpt-oss:20b-cloud",
     num_chunks: Optional[int] = None,
     min_tokens: int = 300,
     max_tokens: int = 500,
-    overlap_tokens: int = 50
+    overlap_tokens: int = 50,
+    tokenizer_model: Optional[str] = None
 ):
     """
     Main processing function.
     
     Args:
         dataset_name: Name of the dataset (e.g., 'diabetes')
-        model_name: vLLM model name
+        model_name: Ollama model name (e.g., 'llama3', 'mistral')
         num_chunks: Optional limit on number of chunks per document (for debugging)
         min_tokens: Minimum tokens per chunk
         max_tokens: Maximum tokens per chunk
         overlap_tokens: Number of tokens to overlap between chunks
+        tokenizer_model: Optional tokenizer model name (if different from model_name)
     """
     # Get paths
     main_dir = Path(__file__).parent.parent.parent
     docs_dir = main_dir / "data" / "docs" / dataset_name
     output_dir = main_dir / "data" / "kb" / dataset_name
+    per_doc_dir = output_dir / "per_doc"
     
     # Check if docs directory exists
     if not docs_dir.exists():
         raise FileNotFoundError(f"Document directory not found: {docs_dir}")
     
-    # Create output directory if it doesn't exist
+    # Create output directories if they don't exist
     output_dir.mkdir(parents=True, exist_ok=True)
+    per_doc_dir.mkdir(parents=True, exist_ok=True)
     
-    # Get all PDF files
-    pdf_files = list(docs_dir.glob("*.pdf"))
-    if not pdf_files:
-        print(f"No PDF files found in {docs_dir}")
+    # Get all text files
+    txt_files = list(docs_dir.glob("*.txt"))
+    if not txt_files:
+        print(f"No text files found in {docs_dir}")
         return
     
-    print(f"Found {len(pdf_files)} PDF file(s) to process")
+    print(f"Found {len(txt_files)} text file(s) to process")
     
-    # Initialize tokenizer (use same model for tokenizer)
-    print(f"Loading tokenizer for {model_name}...")
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    # Initialize tokenizer for text chunking
+    # Note: This tokenizer is only used for chunking, not for Ollama inference
+    # Using gpt2 as default since it's publicly available and works well for token counting
+    tokenizer_model_name = tokenizer_model or "gpt2"
+    print(f"Loading tokenizer for chunking: {tokenizer_model_name}...")
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_model_name, trust_remote_code=True)
+        print(f"  Successfully loaded tokenizer: {tokenizer_model_name}")
+    except Exception as e:
+        print(f"  Warning: Could not load tokenizer {tokenizer_model_name}: {str(e)}")
+        print("  Falling back to gpt2 tokenizer...")
+        try:
+            tokenizer = AutoTokenizer.from_pretrained("gpt2")
+            print("  Successfully loaded gpt2 tokenizer")
+        except Exception as e2:
+            raise Exception(f"Failed to load tokenizer (both {tokenizer_model_name} and gpt2 failed): {str(e2)}")
     
-    # Initialize vLLM LLM
-    print(f"Initializing vLLM with model {model_name}...")
-    llm = LLM(model=model_name, trust_remote_code=True)
+    # Determine if using cloud model and set API URL accordingly
+    is_cloud_model = '-cloud' in model_name or ':cloud' in model_name
+    if is_cloud_model:
+        api_url = "https://ollama.com/api/generate"
+        # Get API key from environment variable
+        api_key = os.getenv('OLLAMA_API_KEY')
+        if not api_key:
+            print("[Warning] OLLAMA_API_KEY not set. Cloud models require authentication.")
+            print("[Info] Set OLLAMA_API_KEY environment variable or run 'ollama signin'")
+    else:
+        api_url = "http://localhost:11434/api/generate"
+        api_key = None
     
-    # Placeholder prompt template (user will refine later)
-    prompt_template = """Does the following text chunk contain useful information for creating natural language explanations? 
-Respond with 'yes' or 'no' only.
+    print(f"Using Ollama API: {api_url}")
+    if is_cloud_model:
+        print(f"Model: {model_name} (cloud model)")
+    else:
+        print(f"Model: {model_name} (local model)")
+    
+    prompt_template = """You are an expert evaluator for an Explainable AI (XAI) system focused on Diabetes prediction. 
+    Your task is to determine if the following text chunk contains specific "grounding information" necessary to translate technical data (like SHAP values or Counterfactuals) into human-centered narratives.
 
-Chunk: {chunk_text}"""
+    # RUBRIC FOR POSITIVE ANSWER
+    To answer "Yes", the text must contain at least one of the following regarding diabetes risk factors (e.g., BMI, Glucose, Insulin, Blood Pressure, Age, Pregnancies, Pedigree Function):
+
+    1. **Feature Meaning:** Definitions or simple explanations of what a medical feature is.
+    2. **Risk Impact:** Explanations of *how* or *why* a specific feature increases or decreases diabetes risk (mechanism).
+    3. **Actionable Advice:** Suggestions on how a user might modify this feature (e.g., lifestyle changes, diet, exercise) to lower their risk.
+    4. **Contextual Values:** Information about normal ranges, thresholds, or what constitutes a "high" or "low" value (crucial for explaining counterfactual changes).
+
+    # RUBRIC FOR NEGATIVE ANSWER
+    If the text is generic, unrelated to diabetes features, or purely structural (like references or formatting), the answer is "No".
+
+    Chunk: {chunk_text}
+
+    # THINKING PROCESS
+    Think through your reasoning step by step:
+    1. Identify any specific diabetes features mentioned in the text.
+    2. Check if the text provides definitions, causal impacts, actionable advice, or value ranges for those features.
+    3. Determine if this information would help a non-expert understand *why* their risk is high or *how* to change it.
+
+    # OUTPUT FORMAT
+    Provide your final answer in the exact format specified: 
+    {{
+        "reasoning": "<your reasoning process here>",
+        "final_answer": "<Yes/No>"
+    }}
+    """
     
-    # Process each PDF
+    # Process each text file
     total_chunks_processed = 0
     total_chunks_useful = 0
+    all_useful_chunks = []  # Collect all useful chunks for final KB
     
-    for pdf_path in pdf_files:
-        pdf_name = pdf_path.name
-        print(f"\nProcessing: {pdf_name}")
+    for txt_path in txt_files:
+        txt_name = txt_path.name
+        print(f"\nProcessing: {txt_name}")
         
         try:
-            # Extract text
-            print("  Extracting text...")
-            text = extract_text_from_pdf(str(pdf_path))
+            # Load text
+            print("  Loading text...")
+            text = load_text_from_file(str(txt_path))
             
             if not text.strip():
-                print(f"  Warning: No text extracted from {pdf_name}, skipping...")
+                print(f"  Warning: No text found in {txt_name}, skipping...")
                 continue
             
             # Create chunks
@@ -217,14 +330,24 @@ Chunk: {chunk_text}"""
                 print(f"  Limited to first {len(chunks)} chunks (debug mode)")
             
             # Filter chunks with LLM
-            print("  Filtering chunks with LLM...")
+            print("  Filtering chunks with Ollama...")
             filtered_chunks = []
             for chunk in chunks:
-                is_useful = filter_chunk_with_llm(llm, chunk["text"], prompt_template)
+                is_useful, llm_response = filter_chunk_with_llm(
+                    model_name, chunk["text"], prompt_template, api_url, api_key
+                )
                 chunk["is_useful"] = is_useful
+                chunk["llm_response"] = llm_response
                 filtered_chunks.append(chunk)
                 
                 if is_useful:
+                    # Create clean chunk with only required fields for final KB
+                    useful_chunk = {
+                        "source_txt": txt_name,
+                        "chunk_index": chunk["chunk_index"],
+                        "text": chunk["text"]
+                    }
+                    all_useful_chunks.append(useful_chunk)
                     total_chunks_useful += 1
                 total_chunks_processed += 1
                 
@@ -232,10 +355,10 @@ Chunk: {chunk_text}"""
                 if total_chunks_processed % 10 == 0:
                     print(f"    Processed {total_chunks_processed} chunks...")
             
-            # Save results
-            output_file = output_dir / f"{pdf_path.stem}.json"
+            # Save results to per_doc subfolder
+            output_file = per_doc_dir / f"{txt_path.stem}.json"
             output_data = {
-                "source_pdf": pdf_name,
+                "source_txt": txt_name,
                 "chunks": filtered_chunks
             }
             
@@ -246,8 +369,21 @@ Chunk: {chunk_text}"""
             print(f"  Saved {len(filtered_chunks)} chunks ({useful_count} useful) to {output_file}")
             
         except Exception as e:
-            print(f"  Error processing {pdf_name}: {str(e)}")
+            print(f"  Error processing {txt_name}: {str(e)}")
             continue
+    
+    # Save all useful chunks to final KB file
+    kb_output_file = output_dir / f"kb-{dataset_name}.json"
+    kb_output_data = {
+        "dataset": dataset_name,
+        "total_useful_chunks": len(all_useful_chunks),
+        "chunks": all_useful_chunks
+    }
+    
+    with open(kb_output_file, 'w', encoding='utf-8') as f:
+        json.dump(kb_output_data, f, indent=2, ensure_ascii=False)
+    
+    print(f"\nSaved {len(all_useful_chunks)} useful chunks to {kb_output_file}")
     
     # Print summary
     print("\n" + "="*60)
@@ -258,11 +394,12 @@ Chunk: {chunk_text}"""
     if total_chunks_processed > 0:
         print(f"Usefulness rate: {100 * total_chunks_useful / total_chunks_processed:.2f}%")
     print(f"Output directory: {output_dir}")
+    print(f"Final KB file: {kb_output_file}")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Filter PDF documents for RAG knowledge base'
+        description='Filter text documents for RAG knowledge base'
     )
     parser.add_argument(
         '--dataset',
@@ -279,8 +416,14 @@ def main():
     parser.add_argument(
         '--model',
         type=str,
-        default="QuantTrio/Qwen3-30B-A3B-Thinking-2507-AWQ",
-        help='vLLM model name (default: QuantTrio/Qwen3-30B-A3B-Thinking-2507-AWQ)'
+        default="gpt-oss:20b-cloud",
+        help='Ollama model name (default: gpt-oss:20b-cloud)'
+    )
+    parser.add_argument(
+        '--tokenizer-model',
+        type=str,
+        default=None,
+        help='Tokenizer model name for chunking (default: gpt2)'
     )
     parser.add_argument(
         '--min-tokens',
@@ -303,13 +446,14 @@ def main():
     
     args = parser.parse_args()
     
-    process_pdfs(
+    process_txt_files(
         dataset_name=args.dataset,
         model_name=args.model,
         num_chunks=args.num_chunks,
         min_tokens=args.min_tokens,
         max_tokens=args.max_tokens,
-        overlap_tokens=args.overlap_tokens
+        overlap_tokens=args.overlap_tokens,
+        tokenizer_model=args.tokenizer_model
     )
 
 
