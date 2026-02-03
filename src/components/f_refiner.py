@@ -40,8 +40,8 @@ class NarrativeRefiner:
 
         return rubric_str.strip()
 
-    def _format_failures(self, failures: dict) -> str:
-        """Format the failures dictionary into a readable string for the LLM."""
+    def _format_failures(self, failures: dict) -> list:
+        """Format the failures dictionary into readable lines for the LLM."""
         failure_lines = []
 
         if not failures.get("faithfulness", {}).get("passed", True):
@@ -72,11 +72,14 @@ class NarrativeRefiner:
             else:
                 failure_lines.append(f"ALIGNMENT ERROR: {report}")
 
-        return (
-            "\n".join(failure_lines)
-            if failure_lines
-            else "No specific failures listed."
-        )
+        return failure_lines
+
+    def _format_feedback_history(self, history: list) -> str:
+        """Format de-duplicated failure feedback history for the LLM."""
+        if not history:
+            return "No prior feedback history."
+
+        return "\n".join(f"- {item}" for item in history)
 
     def _format_target_style(self, style: dict) -> str:
         """Format the target style values for display in the prompt."""
@@ -112,7 +115,15 @@ class NarrativeRefiner:
             A refined narrative addressing all failures
         """
 
-        formatted_failures = self._format_failures(failures)
+        failure_lines = self._format_failures(failures)
+        formatted_failures = (
+            "\n".join(failure_lines)
+            if failure_lines
+            else "No specific failures listed."
+        )
+        formatted_feedback_history = self._format_feedback_history(
+            failures.get("history", [])
+        )
         target_style_formatted = self._format_target_style(target_style)
         rubric_formatted = self._format_rubric()
         data_json = json.dumps(raw_data, indent=2)
@@ -121,6 +132,7 @@ class NarrativeRefiner:
         prompt = prompt.replace("{{raw_data}}", data_json)
         prompt = prompt.replace("{{target_style}}", target_style_formatted)
         prompt = prompt.replace("{{failures}}", formatted_failures)
+        prompt = prompt.replace("{{feedback_history}}", formatted_feedback_history)
         prompt = prompt.replace("{{rubric}}", rubric_formatted)
 
         payload = {
