@@ -72,5 +72,16 @@ orchestrator:
   eval_alignment_tolerance: 0.1
 
 refiner:
-  enabled: true  # Set to false to fall back to hint-based mechanism
-  max_refine_attempts: 3  # Max consecutive refinement attempts before regenerating
+  enabled: true # Set to false to fall back to hint-based mechanism
+  # max_refine_attempts: 3 # Max consecutive refinement attempts before regenerating
+
+rag:
+  enabled: true
+  embedding_model: "embeddinggemma" # Ollama embedding model
+  top_k: 3 # Number of chunks to retrieve
+  min_similarity: 0.5
+  max_context_chars: 3000 # Cap for injected RAG context length
+  max_context_chunks: 3 # Max number of chunks to include
+  chromadb_path: "data/chromadb"
+  kb_path: "data/kb"
+  debug: true

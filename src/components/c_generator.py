@@ -1,14 +1,27 @@
 import json
 import yaml
+
 from src.components.ollama_client import OllamaClient
 
 
 class NarrativeGenerator:
     def __init__(
-        self, model_name="gpt-oss:20b-cloud", config_path="src/prompts/prompts.yaml"
+        self,
+        model_name="gpt-oss:20b-cloud",
+        config_path="src/prompts/prompts.yaml",
+        rag_retriever=None,
     ):
+        """
+        Initialize the NarrativeGenerator.
+
+        Args:
+            model_name: Ollama model name for generation
+            config_path: Path to prompts YAML config
+            rag_retriever: Optional RAGRetriever instance for context augmentation
+        """
         self.model_name = model_name
         self.ollama = OllamaClient.from_model(self.model_name)
+        self.rag = rag_retriever
 
         # Load the externalized prompts
         with open(config_path, "r") as f:
@@ -68,14 +81,73 @@ class NarrativeGenerator:
 
         return "\n".join([f"- {i}" for i in instr])
 
-    def generate(self, raw_data, style, hint=None):
+    def _build_rag_query(self, raw_data: dict) -> str:
+        """
+        Build a query string from raw explanation data for RAG retrieval.
+
+        Args:
+            raw_data: The raw explanation data dict
+
+        Returns:
+            A query string suitable for semantic search
+        """
+
+        current = raw_data.get("current", {})
+        target = raw_data.get("target", {})
+
+        changed_features = list(target.keys())
+
+        query_parts = [
+            f"Explain the health implications of {', '.join(changed_features)}."
+        ]
+
+        for feat in changed_features:
+            if feat in current:
+                query_parts.append(
+                    f"{feat}: changing from {current[feat]} to {target[feat]}"
+                )
+
+        return " ".join(query_parts)
+
+    def generate(self, raw_data, style, hint=None, use_rag: bool = True):
+        """
+        Generate a narrative explanation.
+
+        Args:
+            raw_data: The raw explanation data
+            style: Style configuration dict
+            hint: Optional hint for corrections
+            use_rag: Whether to use RAG context (if available)
+
+        Returns:
+            Generated narrative string
+        """
         dynamic_style = self._get_dynamic_instructions(style)
         data_json = json.dumps(raw_data, indent=2)
 
-        # Build the final prompt using YAML content
-        prompt = self.prompts["prompt_template"].format(
-            data_json=data_json, dynamic_style=dynamic_style
-        )
+        rag_context = ""
+        if use_rag and self.rag and self.rag.is_available():
+            query = self._build_rag_query(raw_data)
+            print(f" [RAG] Query: {query}")
+            chunks = self.rag.retrieve_with_metadata(query)
+            print(f" [RAG] Retrieved {len(chunks)} chunks")
+            if chunks:
+                for i, c in enumerate(chunks):
+                    print(f"   [{i + 1}] sim={c['similarity']:.3f} from {c['source']}")
+                rag_context = (
+                    "\n\n# DOMAIN KNOWLEDGE (Use this to enhance your explanations)\n"
+                )
+                rag_context += "\n---\n".join([c["text"] for c in chunks])
+                print(f" [RAG] Context: {rag_context}")
+
+        prompt_template = self.prompts["prompt_template"]
+        format_kwargs = {"data_json": data_json, "dynamic_style": dynamic_style}
+        if "{rag_context}" in prompt_template:
+            format_kwargs["rag_context"] = rag_context
+        prompt = prompt_template.format(**format_kwargs)
+
+        if rag_context and "{rag_context}" not in prompt_template:
+            prompt += rag_context
 
         if hint:
             prompt += f"\n\n# CRITICAL CORRECTION REQUIRED:\n{hint}"
@@ -84,7 +156,7 @@ class NarrativeGenerator:
             "model": self.model_name,
             "prompt": prompt,
             "stream": False,
-            "options": {"temperature": 0.2},  # Lower temp for better data fidelity
+            "options": {"temperature": 0.2},
         }
 
         try:
