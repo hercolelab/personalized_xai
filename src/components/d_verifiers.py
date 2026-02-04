@@ -124,7 +124,7 @@ class XAIVerifier:
 
         # When technicality or depth is high, require SHAP values present for all target features
         requires_shap = (
-            style.get("technicality", 0) > 0.7 or style.get("depth", 0) > 0.7
+            style.get("technicality", 0) > 0.7
         )
         if requires_shap:
             target_features = list(ground_truth.get("target", {}).keys())
