@@ -1,5 +1,7 @@
 import argparse
+import csv
 import json
+import os
 from typing import TypedDict
 
 import numpy as np
@@ -232,13 +234,23 @@ class AgentJudgeEvaluator:
                 print("\n" + "*" * 30 + " FINAL VERIFIED NARRATIVE " + "*" * 30)
                 print(results["narrative"])
                 print("*" * 86)
-                return 0
+                return {
+                    "steps": 0,
+                    "success": True,
+                    "final_cpm_vector": self.orchestrator.cpm.vector.tolist(),
+                    "error": "",
+                }
             else:
                 print(
                     f"[Eval] ERROR: Generation failed even though alignment satisfied - {results.get('narrative', 'unknown error')}"
                 )
                 print("[Eval] Cannot proceed with evaluation.")
-                return -1
+                return {
+                    "steps": 0,
+                    "success": False,
+                    "final_cpm_vector": self.orchestrator.cpm.vector.tolist(),
+                    "error": "generation_failed",
+                }
 
         graph = self._build_graph(persona_name, target_vector, ground_truth)
         initial_state: EvalState = {
@@ -255,16 +267,35 @@ class AgentJudgeEvaluator:
 
         if result.get("error"):
             print(f"[Eval] ERROR: Workflow failed with error: {result['error']}")
-            return -1
+            return {
+                "steps": int(result.get("step", 0)),
+                "success": False,
+                "final_cpm_vector": self.orchestrator.cpm.vector.tolist(),
+                "error": result.get("error", "unknown_error"),
+            }
 
-        return int(result.get("step", 0))
+        success = bool(result.get("final_narrative"))
+        return {
+            "steps": int(result.get("step", 0)),
+            "success": success,
+            "final_cpm_vector": self.orchestrator.cpm.vector.tolist(),
+            "error": "",
+        }
 
 
-def _pick_best_idx(orchestrator: HumanInteractiveOrchestrator) -> int:
+def _pick_top_k_idxs(
+    orchestrator: HumanInteractiveOrchestrator, top_k: int
+) -> list[int]:
     with torch.no_grad():
         X_test_t = torch.tensor(orchestrator.backend.X_test.values, dtype=torch.float32)
         probs = orchestrator.backend.model(X_test_t).numpy().flatten()
-    return int(np.argmax(probs))
+    ranked = np.argsort(-probs)
+    k = max(1, min(int(top_k), len(ranked)))
+    return [int(idx) for idx in ranked[:k]]
+
+
+def _pick_best_idx(orchestrator: HumanInteractiveOrchestrator) -> int:
+    return _pick_top_k_idxs(orchestrator, top_k=1)[0]
 
 
 def main():
@@ -272,7 +303,7 @@ def main():
     parser.add_argument(
         "--persona",
         type=str,
-        required=True,
+        required=False,
         help="Persona name from config.yaml (e.g., patient, clinician).",
     )
     parser.add_argument(
@@ -287,6 +318,23 @@ def main():
         default=None,
         help="Max feedback steps before stopping (overrides config).",
     )
+    parser.add_argument(
+        "--batch",
+        action="store_true",
+        help="Run batch evaluation on top-K highest-risk samples.",
+    )
+    parser.add_argument(
+        "--top_k",
+        type=int,
+        default=50,
+        help="Number of highest-risk samples to evaluate (batch mode).",
+    )
+    parser.add_argument(
+        "--output_csv",
+        type=str,
+        default="data/results/agent_judge_eval.csv",
+        help="Output CSV path for batch results.",
+    )
     args = parser.parse_args()
 
     config_path = "src/config/config.yaml"
@@ -297,14 +345,58 @@ def main():
         else evaluator.cfg.get("orchestrator", {}).get("max_steps", 20)
     )
 
-    instance_idx = (
-        args.instance_idx
-        if args.instance_idx is not None
-        else _pick_best_idx(evaluator.orchestrator)
-    )
+    if args.batch:
+        personas = evaluator.cfg.get("personas", {})
+        persona_names = list(personas.keys())
+        if not persona_names:
+            raise ValueError("No personas found in config.")
 
-    steps_taken = evaluator.run(args.persona, instance_idx, max_steps)
-    print(f"[Evaluation] Steps taken: {steps_taken}")
+        rng = np.random.default_rng(evaluator.cfg.get("seed", 42))
+        top_k_idxs = _pick_top_k_idxs(evaluator.orchestrator, args.top_k)
+
+        output_dir = os.path.dirname(args.output_csv)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+
+        with open(args.output_csv, "w", newline="") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=[
+                    "sample_idx",
+                    "persona",
+                    "steps",
+                    "final_cpm_vector",
+                    "success",
+                ],
+            )
+            writer.writeheader()
+
+            for sample_idx in top_k_idxs:
+                persona = rng.choice(persona_names)
+                print(
+                    f"\n[Batch] sample_idx={sample_idx} persona={persona} (top_k={args.top_k})"
+                )
+                result = evaluator.run(persona, sample_idx, max_steps)
+                writer.writerow(
+                    {
+                        "sample_idx": sample_idx,
+                        "persona": persona,
+                        "steps": result["steps"],
+                        "final_cpm_vector": json.dumps(result["final_cpm_vector"]),
+                        "success": result["success"],
+                    }
+                )
+    else:
+        if not args.persona:
+            raise ValueError("--persona is required unless --batch is set.")
+
+        instance_idx = (
+            args.instance_idx
+            if args.instance_idx is not None
+            else _pick_best_idx(evaluator.orchestrator)
+        )
+        result = evaluator.run(args.persona, instance_idx, max_steps)
+        print(f"[Evaluation] Steps taken: {result['steps']}")
 
 
 if __name__ == "__main__":
