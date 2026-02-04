@@ -18,6 +18,7 @@ xai:
   dice_total_cfs: 1
   dice_desired_class: 0
   shap_relevance_threshold: 0.01
+  monotonicity: {}
 
 # [technicality, verbosity, depth, perspective]
 personas:
