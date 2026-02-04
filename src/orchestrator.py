@@ -1,4 +1,5 @@
 import re
+from typing import Any, Optional
 import yaml
 import argparse
 import torch
@@ -10,6 +11,7 @@ from src.components.c_generator import NarrativeGenerator
 from src.components.d_verifiers import XAIVerifier
 from src.components.e_feedback_translator import FeedbackTranslator
 from src.components.f_refiner import NarrativeRefiner
+from src.components.g_rag import RAGRetriever
 
 
 def clean_tags(text):
@@ -18,6 +20,11 @@ def clean_tags(text):
     text = re.sub(r"\[/?I_[^\]]+\]", "", text)
     # return re.sub(r'\s+', ' ', text).strip()
     return text
+
+
+def _infer_dataset_name(cfg):
+    csv_path = cfg.get("data", {}).get("csv_path", "diabetes")
+    return csv_path.split("/")[-1].replace("_cleaned.csv", "").replace(".csv", "")
 
 
 class XAI_Orchestrator:
@@ -34,8 +41,36 @@ class XAI_Orchestrator:
         )
         self.backend = XAI_Backend(config_path)
         self.cpm = ContextualPreferenceModel(config_path)
+
+        # Initialize RAG if enabled
+        self.rag_enabled = self.cfg.get("rag", {}).get("enabled", False)
+        self.rag = None
+        if self.rag_enabled:
+            try:
+                dataset_name = _infer_dataset_name(self.cfg)
+                self.rag = RAGRetriever(dataset_name, config_path).initialize()
+                if self.rag.is_available():
+                    print(
+                        colored(
+                            f"  [RAG] Loaded knowledge base with {self.rag.collection.count()} chunks",
+                            "green",
+                        )
+                    )
+                else:
+                    print(
+                        colored(
+                            "  [RAG] No knowledge base available, continuing without RAG",
+                            "yellow",
+                        )
+                    )
+                    self.rag = None
+            except Exception as e:
+                print(colored(f"  [RAG] Failed to initialize: {e}", "yellow"))
+                self.rag = None
+
         self.narrator = NarrativeGenerator(
-            model_name=self.cfg["verifier"].get("llm_judge_model", "llama3.1:8b")
+            model_name=self.cfg["verifier"].get("llm_judge_model", "llama3.1:8b"),
+            rag_retriever=self.rag,
         )
         self.verifier = XAIVerifier(config_path)
 
@@ -47,6 +82,7 @@ class XAI_Orchestrator:
             )
 
         self.max_retries = self.cfg.get("orchestrator", {}).get("max_retries", 5)
+        self._failure_history: list[str] = []
 
     def run(self, role, instance_idx):
         """
@@ -80,7 +116,7 @@ class XAI_Orchestrator:
 
         # 3. REJECTION SAMPLING LOOP
         last_narrative = None
-        last_failures = None
+        last_failures: Optional[dict[str, Any]] = None
         for attempt in range(self.max_retries):
             print(
                 colored(
@@ -168,10 +204,22 @@ class XAI_Orchestrator:
                     "alignment": {"passed": is_aligned, "report": style_report},
                 }
 
+                self._update_failure_history(last_failures)
+                if self._failure_history:
+                    last_failures["history"] = list(self._failure_history)
+
         return {
             "status": "failed",
             "narrative": "Could not verify narrative within retry limit.",
         }
+
+    def _update_failure_history(self, failures: dict[str, Any]):
+        if not self.refiner_enabled:
+            return
+        failure_lines = self.refiner._format_failures(failures)
+        for line in failure_lines:
+            if line not in self._failure_history:
+                self._failure_history.append(line)
 
 
 class HumanInteractiveOrchestrator:
@@ -188,8 +236,36 @@ class HumanInteractiveOrchestrator:
         )
         self.backend = XAI_Backend(config_path)
         self.cpm = ContextualPreferenceModel(config_path)
+
+        # Initialize RAG if enabled
+        self.rag_enabled = self.cfg.get("rag", {}).get("enabled", False)
+        self.rag = None
+        if self.rag_enabled:
+            try:
+                dataset_name = _infer_dataset_name(self.cfg)
+                self.rag = RAGRetriever(dataset_name, config_path).initialize()
+                if self.rag.is_available():
+                    print(
+                        colored(
+                            f"  [RAG] Loaded knowledge base with {self.rag.collection.count()} chunks",
+                            "green",
+                        )
+                    )
+                else:
+                    print(
+                        colored(
+                            "  [RAG] No knowledge base available, continuing without RAG",
+                            "yellow",
+                        )
+                    )
+                    self.rag = None
+            except Exception as e:
+                print(colored(f"  [RAG] Failed to initialize: {e}", "yellow"))
+                self.rag = None
+
         self.narrator = NarrativeGenerator(
-            model_name=self.cfg["verifier"].get("llm_judge_model", "llama3.1:8b")
+            model_name=self.cfg["verifier"].get("llm_judge_model", "llama3.1:8b"),
+            rag_retriever=self.rag,
         )
         self.verifier = XAIVerifier(config_path)
         self.feedback_translator = FeedbackTranslator(config_path)
@@ -201,10 +277,11 @@ class HumanInteractiveOrchestrator:
             )
 
         self.max_retries = self.cfg.get("orchestrator", {}).get("max_retries", 5)
+        self._failure_history: list[str] = []
 
     def _generate_verified(self, ground_truth, target_style):
         last_narrative = None
-        last_failures = None
+        last_failures: Optional[dict[str, Any]] = None
         for attempt in range(self.max_retries):
             print(
                 colored(
@@ -285,10 +362,22 @@ class HumanInteractiveOrchestrator:
                     "alignment": {"passed": is_aligned, "report": style_report},
                 }
 
+                self._update_failure_history(last_failures)
+                if self._failure_history:
+                    last_failures["history"] = list(self._failure_history)
+
         return {
             "status": "failed",
             "narrative": "Could not verify narrative within retry limit.",
         }
+
+    def _update_failure_history(self, failures: dict[str, Any]):
+        if not self.refiner_enabled:
+            return
+        failure_lines = self.refiner._format_failures(failures)
+        for line in failure_lines:
+            if line not in self._failure_history:
+                self._failure_history.append(line)
 
     def prepare_case(self, instance_idx):
         raw_xai_text, ground_truth = self.backend.get_explanation(instance_idx)

@@ -1,14 +1,27 @@
 import json
 import yaml
+
 from src.components.ollama_client import OllamaClient
 
 
 class NarrativeGenerator:
     def __init__(
-        self, model_name="gpt-oss:20b-cloud", config_path="src/prompts/prompts.yaml"
+        self,
+        model_name="gpt-oss:20b-cloud",
+        config_path="src/prompts/prompts.yaml",
+        rag_retriever=None,
     ):
+        """
+        Initialize the NarrativeGenerator.
+
+        Args:
+            model_name: Ollama model name for generation
+            config_path: Path to prompts YAML config
+            rag_retriever: Optional RAGRetriever instance for context augmentation
+        """
         self.model_name = model_name
         self.ollama = OllamaClient.from_model(self.model_name)
+        self.rag = rag_retriever
 
         # Load the externalized prompts
         with open(config_path, "r") as f:
@@ -68,64 +81,73 @@ class NarrativeGenerator:
 
         return "\n".join([f"- {i}" for i in instr])
 
-    def generate(self, raw_data, style, hint=None):
+    def _build_rag_query(self, raw_data: dict) -> str:
+        """
+        Build a query string from raw explanation data for RAG retrieval.
+
+        Args:
+            raw_data: The raw explanation data dict
+
+        Returns:
+            A query string suitable for semantic search
+        """
+
+        current = raw_data.get("current", {})
+        target = raw_data.get("target", {})
+
+        changed_features = list(target.keys())
+
+        query_parts = [
+            f"Explain the health implications of {', '.join(changed_features)}."
+        ]
+
+        for feat in changed_features:
+            if feat in current:
+                query_parts.append(
+                    f"{feat}: changing from {current[feat]} to {target[feat]}"
+                )
+
+        return " ".join(query_parts)
+
+    def generate(self, raw_data, style, hint=None, use_rag: bool = True):
+        """
+        Generate a narrative explanation.
+
+        Args:
+            raw_data: The raw explanation data
+            style: Style configuration dict
+            hint: Optional hint for corrections
+            use_rag: Whether to use RAG context (if available)
+
+        Returns:
+            Generated narrative string
+        """
         dynamic_style = self._get_dynamic_instructions(style)
         data_json = json.dumps(raw_data, indent=2)
 
-        # Build the final prompt using YAML content
-        prompt = f"""You are an expert XAI (Explainable AI) Interpreter and Data Narrator. Your role is to bridge the gap between complex machine learning algorithms and human understanding. You translate mathematical outputs into clear, actionable natural language narratives.
-        
-        To perform this task, you must understand two core concepts:
-        1.  Counterfactual Explanation: A "What-if" scenario that identifies the minimal changes required in the user's current situation to achieve a different, desired model outcome (e.g., flipping a loan rejection to approval). It focuses on actionability.
-        2.  SHAP (SHapley Additive exPlanations): A game-theoretic method that explains a machine-learning model’s prediction by assigning each feature a Shapley-based attribution that quantifies its average marginal contribution—positive or negative—to the deviation from the model’s expected output.
+        rag_context = ""
+        if use_rag and self.rag and self.rag.is_available():
+            query = self._build_rag_query(raw_data)
+            print(f" [RAG] Query: {query}")
+            chunks = self.rag.retrieve_with_metadata(query)
+            print(f" [RAG] Retrieved {len(chunks)} chunks")
+            if chunks:
+                for i, c in enumerate(chunks):
+                    print(f"   [{i + 1}] sim={c['similarity']:.3f} from {c['source']}")
+                rag_context = (
+                    "\n\n# DOMAIN KNOWLEDGE (Use this to enhance your explanations)\n"
+                )
+                rag_context += "\n---\n".join([c["text"] for c in chunks])
+                print(f" [RAG] Context: {rag_context}")
 
-        # INPUT DATA STRUCTURE 
-        You will receive a JSON object containing the following keys:
-        - `current`: A dictionary representing the original profile or situation of the instance.
-        - `target`: A dictionary representing the specific list of changes suggested by the counterfactual explanation algorithm.
-        - `shap_impacts`: A dictionary containing SHAP values for all features, ordered by magnitude (absolute value) from highest to lowest. Each key is a feature name and each value is the SHAP impact value for that feature.
-        - `probabilities`: A dictionary containing:
-            - `current`: The prediction probability of the original profile.
-            - `minimized`: The prediction probability achieved after applying the counterfactual changes.
-        
-        # TASK
-        Your task is:
-        - Write a narrative that describes a Counterfactual Explanation, supported by SHAP Feature Attributions. Explain the journey from the Current state to the Target state. Do not simply list the changes. 
-        - Analyze the contribution of the changed features and highlight how the interactions between these features drive the shift in the prediction probability. 
-        - Explain why the suggested changes lead to the desired outcome (using the provided SHAP values as evidence of impact if the style allows it).
-        
-        # STYLE REQUIREMENTS
-        The narrative must follow a specific stylistic profile defined along four dimensions:
-        - Technicality: ranges from layperson-friendly language with minimal numbers to highly clinical language with precise measurements and technical terms.
-        - Verbosity: ranges from very concise, bullet-style communication to more elaborate, flowing narrative text.
-        - Depth: ranges from listing individual factors in isolation to explaining how multiple factors interact and jointly affect the outcome.
-        - Perspective: ranges from purely descriptive/retroactive reporting of the current situation to proactive, coaching-oriented guidance focused on future changes.
+        prompt_template = self.prompts["prompt_template"]
+        format_kwargs = {"data_json": data_json, "dynamic_style": dynamic_style}
+        if "{rag_context}" in prompt_template:
+            format_kwargs["rag_context"] = rag_context
+        prompt = prompt_template.format(**format_kwargs)
 
-        # FORMAT & TAGGING RULES (CRITICAL)
-        To allow for automated post-processing and validation, you must wrap all numerical values and feature names in specific XML-style tags. DO NOT deviate from this format.
-        1.  Current Values: When mentioning a value from the user's original profile, wrap it as: `[V_START_FEATURE_NAME]value[/V_START_FEATURE_NAME]`
-        2.  Target Values: When mentioning a suggested new value from the counterfactual, wrap it as: `[V_GOAL_FEATURE_NAME]value[/V_GOAL_FEATURE_NAME]`
-        3.  SHAP Impacts: When mentioning a SHAP contribution value, wrap it as: `[I_FEATURE_NAME]value[/I_FEATURE_NAME]`
-
-        # CLINICAL GUARDRAILS
-        - Static vs Dynamic: Only features in the 'target' dictionary are changeable. Treat all others as static context (NEVER suggest changing them)."
-        - SHAP Integration: SHAP values can be used to support the description of the counterfactual explanation, but only if the style allows it. If a feature is not in the 'target' dictionary, DO NOT mention its SHAP value in the narrative.
-        - SHAP Suppression: If perspective is high, technicality is low, or verbosity is low, DO NOT mention SHAP impact values.
-        
-        # ADDITIONAL INSTRUCTIONS
-        - Highlight the changes: Do not list the data input entirely, but rather highlight the changes and the impact of the changes.
-        - You are the Narrator: Consider the counterfactual and SHAP values not as independent entities, but as a cohesive unit that drives the narrative.
-        - Don't use "Counterfactual" term: Instead, use "Suggested Changes" or "Recommended Changes".
-
-        
-        Here is your input:
-        # DATA INPUT
-        {data_json}
-
-        Here is your style instructions:
-        # STYLE INSTRUCTIONS
-        {dynamic_style}
-        """
+        if rag_context and "{rag_context}" not in prompt_template:
+            prompt += rag_context
 
         if hint:
             prompt += f"\n\n# CRITICAL CORRECTION REQUIRED:\n{hint}"
@@ -134,7 +156,7 @@ class NarrativeGenerator:
             "model": self.model_name,
             "prompt": prompt,
             "stream": False,
-            "options": {"temperature": 0.2},  # Lower temp for better data fidelity
+            "options": {"temperature": 0.2},
         }
 
         try:

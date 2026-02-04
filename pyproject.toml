@@ -1,8 +1,9 @@
 [project]
 name = "personalized-xai"
 version = "0.1.0"
-requires-python = ">=3.9"
+requires-python = ">=3.9,<3.14"
 dependencies = [
+    "chromadb>=1.4.1",
     "dice-ml>=0.11",
     "dotenv>=0.9.9",
     "langchain>=0.3.27",
@@ -11,10 +12,12 @@ dependencies = [
     "numpy>=1.19.5",
     "pandas>=0.25.3",
     "pydantic>=2.12.5",
+    "pypdf>=6.6.2",
     "pyyaml>=6.0.1",
     "requests>=2.27.1",
     "scikit-learn>=0.24.2",
     "shap>=0.49.0",
     "termcolor>=1.1.0",
-    "torch>=1.5.1",
+    "torch>=2.8.0",
+    "transformers>=4.57.6",
 ]
