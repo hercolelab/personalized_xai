@@ -1,0 +1,90 @@
+seed: 42
+
+data:
+  csv_path: "data/lendingclub_5000.csv"  
+  target: "y_not_paid"
+  test_size: 0.2
+  actionable_features: ['dti', 'revol_util', 'annual_inc', 'fico']
+
+model:
+ 
+  hidden_layers: [64, 32] 
+  lr: 0.001
+  epochs: 100
+  batch_size: 64
+
+xai:
+  shap_background_samples: 100
+  dice_method: "gradient"
+  dice_total_cfs: 3
+  dice_desired_class: 0   # 0 = "Paid" (Good), assuming y_not_paid=1 is Bad
+  shap_relevance_threshold: 0.01
+  
+
+personas:
+  applicant: [0.2, 0.8, 0.8, 0.8]   #Easy, Action-oriented
+  bank_officer: [0.8, 0.2, 0.2, 0.3] # High Technicality, Cause-oriented
+  balanced: [0.5, 0.5, 0.5, 0.5] 
+  test: [0.8, 0.5, 0.8, 0.2] 
+
+cpm:
+  learning_rate: 0.2
+
+verifier:
+  tolerances:
+    default: 0.5
+    impact: 0.005
+    alignment: 0.35
+  
+  alias_map:
+    ANNUAL_INC: ["INCOME", "SALARY", "EARNINGS", "YEARLY_PAY"]
+    LOAN_AMNT: ["AMOUNT", "PRINCIPAL", "REQUESTED", "LOAN_SIZE"]
+    DTI: ["DEBT_RATIO", "DEBT_TO_INCOME", "BURDEN"]
+    FICO: ["SCORE", "CREDIT_SCORE", "RATING"]
+    REVOL_UTIL: ["UTILIZATION", "CARD_USAGE", "LIMIT_USAGE"]
+    
+  llm_judge_model: "gpt-oss:20b-cloud"
+
+  verifier_rubric:
+    technicality:
+      levels:
+        0.2: "Accessible: Uses plain language to explain financial concepts. Numbers are allowed, but focus is on simple approval chances, avoiding complex banking jargon. SHAP values not mentioned."
+        0.5: "Balanced: Uses specific dollar amounts and rates, but avoids heavy statistical breakdowns. SHAP values not mentioned."
+        0.8: "Technical: Professional underwriter report style. Uses exact risk coefficients, specific credit terminology, and discusses precise statistical impacts (SHAP values should be mentioned)."
+    verbosity:
+      levels:
+        0.2: "Telegraphic: Strictly uses bullet points. Very concise, short sentences, zero conversational filler."
+        0.5: "Standard: Concise paragraphs or mixed formatting. Clear and direct."
+        0.8: "Narrative: High fluency. Strictly NO bullet points. Continuous prose using transition words."
+    depth:
+      levels:
+        0.2: "Surface: Analyzes financial factors in isolation (e.g., 'Income is low'). Focuses on individual impacts."
+        0.5: "Intermediate: Acknowledges that multiple factors (Debt + Income) contribute to risk but lacks detailed interaction analysis."
+        0.8: "Systemic: Deep analysis of interactions. Explains how features work together (e.g., 'High DTI amplifies the risk of low FICO') to drive the rejection."
+    perspective:
+      levels:
+        0.2: "Retroactive: Explains the 'Current' rejection reasons. Tone is descriptive, reporting on the submitted application status."
+        0.5: "Mixed: Balances the explanation of the current credit profile with some future-looking advice."
+        0.8: "Proactive: Frames the content as a financial recovery plan. Tone is coaching and prescriptive (e.g., 'To get approved next time, do X')."
+
+orchestrator:
+  max_retries: 10
+  max_steps: 20
+  clean_tags_from_final: true
+  test_role: "applicant" 
+  eval_alignment_tolerance: 0.1
+
+refiner:
+  enabled: true  
+  max_refine_attempts: 3 
+
+  rag:
+  enabled: true
+  embedding_model: "embeddinggemma" # Ollama embedding model
+  top_k: 3 # Number of chunks to retrieve
+  min_similarity: 0.5
+  max_context_chars: 3000 # Cap for injected RAG context length
+  max_context_chunks: 3 # Max number of chunks to include
+  chromadb_path: "data/chromadb"
+  kb_path: "data/kb"
+  debug: true
