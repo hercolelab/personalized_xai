@@ -81,7 +81,7 @@ system_prompts:
           medium:
             description: "Intermediate depth. Acknowledge that multiple features contribute to the outcome, but avoid detailed interaction analysis. Focus on individual contributions without extensively linking them together."
           high:
-            description: "Deep systemic analysis. Provide detailed explanations of the feature, its impact (SHAP values should be mentioned in the narrative), and how it interacts with other features to drive the probability shift."
+            description: "Deep systemic analysis. Provide detailed explanations of the feature, its impact, and how it interacts with other features to drive the probability shift."
         perspective:
           low:
             description: "Retroactive. Context: Medical History/Current State Analysis."
