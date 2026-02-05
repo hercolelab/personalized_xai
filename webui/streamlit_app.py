@@ -2,6 +2,7 @@ import streamlit as st
 import sys
 import os
 import logging
+import argparse
 from io import StringIO
 import torch
 
@@ -30,13 +31,34 @@ def get_database():
     return XAIDatabase("webui/webui.sqlite3")
 
 
+DATASET_CONFIGS = {
+    "diabetes": "src/config/config_diabetes.yaml",
+    "lendingclub": "src/config/config_lendingclub.yaml",
+}
+
+
+def get_config_path(dataset):
+    return DATASET_CONFIGS.get(dataset, "src/config/config.yaml")
+
+
+def get_cli_dataset():
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--dataset", type=str, default="diabetes")
+    args, _ = parser.parse_known_args()
+    dataset = (args.dataset or "diabetes").lower()
+    if dataset not in DATASET_CONFIGS:
+        logger.warning("Unknown dataset '%s', defaulting to diabetes", dataset)
+        return "diabetes"
+    return dataset
+
+
 @st.cache_resource
-def get_orchestrator():
+def get_orchestrator(dataset):
     logger.info("Initializing orchestrator...")
     old_stdout = sys.stdout
     sys.stdout = StringIO()
     try:
-        orchestrator = HumanInteractiveOrchestrator("src/config/config.yaml")
+        orchestrator = HumanInteractiveOrchestrator(get_config_path(dataset))
         return orchestrator
     finally:
         sys.stdout = old_stdout
@@ -84,8 +106,11 @@ def initialize_session():
     if "db" not in st.session_state:
         st.session_state.db = get_database()
 
+    if "dataset" not in st.session_state:
+        st.session_state.dataset = get_cli_dataset()
+
     if "orchestrator" not in st.session_state:
-        st.session_state.orchestrator = get_orchestrator()
+        st.session_state.orchestrator = get_orchestrator(st.session_state.dataset)
 
     if "current_session_id" not in st.session_state:
         st.session_state.current_session_id = None
