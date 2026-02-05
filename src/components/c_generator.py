@@ -8,7 +8,8 @@ class NarrativeGenerator:
     def __init__(
         self,
         model_name="gpt-oss:20b-cloud",
-        config_path="src/prompts/prompts.yaml",
+        config_path=None,
+        prompt_path="src/prompts/prompts.yaml",
         rag_retriever=None,
     ):
         """
@@ -16,15 +17,24 @@ class NarrativeGenerator:
 
         Args:
             model_name: Ollama model name for generation
-            config_path: Path to prompts YAML config
+            config_path: Path to config YAML (optional, used to infer prompt_path if not provided)
+            prompt_path: Path to prompts YAML config (defaults to prompts.yaml or inferred from config_path)
             rag_retriever: Optional RAGRetriever instance for context augmentation
         """
         self.model_name = model_name
         self.ollama = OllamaClient.from_model(self.model_name)
         self.rag = rag_retriever
 
+        # Infer prompt_path from config_path if not provided
+        if config_path and prompt_path == "src/prompts/prompts.yaml":
+            with open(config_path, "r") as f:
+                cfg = yaml.safe_load(f)
+            csv_path = cfg.get("data", {}).get("csv_path", "diabetes")
+            dataset_name = csv_path.split("/")[-1].replace("_cleaned.csv", "").replace(".csv", "")
+            prompt_path = f"src/prompts/prompts_{dataset_name}.yaml"
+
         # Load the externalized prompts
-        with open(config_path, "r") as f:
+        with open(prompt_path, "r") as f:
             full_config = yaml.safe_load(f)
             self.prompts = full_config["system_prompts"]["narrative_generator"]
 
@@ -98,15 +108,10 @@ class NarrativeGenerator:
         changed_features = list(target.keys())
 
         query_parts = [
-            f"Explain the health implications of {', '.join(changed_features)}."
+            f"Explain the meaning and implications of the following features: {', '.join(changed_features)}."
         ]
 
-        for feat in changed_features:
-            if feat in current:
-                query_parts.append(
-                    f"{feat}: changing from {current[feat]} to {target[feat]}"
-                )
-
+        
         return " ".join(query_parts)
 
     def generate(self, raw_data, style, hint=None, use_rag: bool = True):
@@ -128,17 +133,20 @@ class NarrativeGenerator:
         rag_context = ""
         if use_rag and self.rag and self.rag.is_available():
             query = self._build_rag_query(raw_data)
-            print(f" [RAG] Query: {query}")
+            if self.rag.debug:
+                print(f" [RAG] Query: {query}")
             chunks = self.rag.retrieve_with_metadata(query)
             print(f" [RAG] Retrieved {len(chunks)} chunks")
             if chunks:
-                for i, c in enumerate(chunks):
-                    print(f"   [{i + 1}] sim={c['similarity']:.3f} from {c['source']}")
+                if self.rag.debug:
+                    for i, c in enumerate(chunks):
+                        print(f"   [{i + 1}] sim={c['similarity']:.3f} from {c['source']}")
                 rag_context = (
                     "\n\n# DOMAIN KNOWLEDGE (Use this to enhance your explanations)\n"
                 )
                 rag_context += "\n---\n".join([c["text"] for c in chunks])
-                print(f" [RAG] Context: {rag_context}")
+                if self.rag.debug:
+                    print(f" [RAG] Context: {rag_context}")
 
         prompt_template = self.prompts["prompt_template"]
         format_kwargs = {"data_json": data_json, "dynamic_style": dynamic_style}

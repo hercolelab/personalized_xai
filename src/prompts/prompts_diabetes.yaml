@@ -240,5 +240,6 @@ system_prompts:
       4. Keep the same tagging format for values ([V_START_...], [V_GOAL_...], [I_...]).
       5. Only suggest changes for features that appear in the 'target' dictionary.
       6. Do NOT use the word "Counterfactual" - use "Suggested Changes" or "Recommended Changes" instead.
+      7. Do not remove too much information from the narrative; align it to the target style trying to maintain as much information as possible.
 
       Write the refined narrative now:

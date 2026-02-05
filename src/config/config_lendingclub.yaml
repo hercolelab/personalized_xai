@@ -1,7 +1,7 @@
 seed: 42
 
 data:
-  csv_path: "data/lendingclub_5000.csv"  
+  csv_path: "data/raw/lendingclub.csv"  
   target: "y_not_paid"
   test_size: 0.2
   actionable_features: ['dti', 'revol_util', 'annual_inc', 'fico']
@@ -23,9 +23,9 @@ xai:
 
 personas:
   applicant: [0.2, 0.8, 0.8, 0.8]   #Easy, Action-oriented
-  bank_officer: [0.8, 0.2, 0.2, 0.3] # High Technicality, Cause-oriented
+  officer: [0.8, 0.2, 0.2, 0.5] # High Technicality, Cause-oriented
   balanced: [0.5, 0.5, 0.5, 0.5] 
-  test: [0.8, 0.5, 0.8, 0.2] 
+  test: [0.2, 0.8, 0.8, 0.8] 
 
 cpm:
   learning_rate: 0.2
@@ -76,9 +76,9 @@ orchestrator:
 
 refiner:
   enabled: true  
-  max_refine_attempts: 3 
+  #max_refine_attempts: 3 
 
-  rag:
+rag:
   enabled: true
   embedding_model: "embeddinggemma" # Ollama embedding model
   top_k: 3 # Number of chunks to retrieve
@@ -87,4 +87,4 @@ refiner:
   max_context_chunks: 3 # Max number of chunks to include
   chromadb_path: "data/chromadb"
   kb_path: "data/kb"
-  debug: true
+  debug: false

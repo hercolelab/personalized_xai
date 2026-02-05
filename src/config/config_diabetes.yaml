@@ -25,7 +25,7 @@ personas:
   patient: [0.2, 0.8, 0.8, 0.8] # Simple, Action-oriented
   clinician: [0.8, 0.2, 0.2, 0.8] # High Tech, Cause-oriented
   balanced: [0.5, 0.5, 0.5, 0.5] # Balanced analysis
-  test: [0.8, 0.5, 0.8, 0.2] # Test style
+  test: [0.8, 0.2, 0.2, 0.8] # Test style
 
 cpm:
   learning_rate: 0.2
@@ -85,4 +85,4 @@ rag:
   max_context_chunks: 3 # Max number of chunks to include
   chromadb_path: "data/chromadb"
   kb_path: "data/kb"
-  debug: true
+  debug: false

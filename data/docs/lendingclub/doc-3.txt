@@ -1,0 +1,1810 @@
+games
+Article
+Determinants of Borrowers’ Default in P2P Lending
+under Consideration of the Loan Risk Class
+Michal Polena 1
+and Tobias Regner 2,*
+1
+Czechoslovak Commercial Bank, 150 57 Prague, Czech Republic; polenamichal@gmail.com
+2
+University of Jena, 07743 Jena, Germany
+*
+Correspondence: tobias.regner@uni-jena.de
+Received: 31 August 2018; Accepted: 3 October 2018; Published: 12 October 2018
+Abstract: We study the determinants of borrowers’ default in P2P lending with a new data set
+consisting of 70,673 loan observations from the Lending Club. Previous research identiﬁed a number
+of default determining variables but did not distinguish between different loan risk levels. We deﬁne
+four loan risk classes and test the signiﬁcance of the default determining variables within each loan
+risk class. Our ﬁndings suggest that the signiﬁcance of most variables depends on the loan risk class.
+Only a few variables are consistently signiﬁcant across all risk classes. The debt-to-income ratio,
+inquiries in the past six months and a loan intended for a small business are positively correlated
+with the default rate. Annual income and credit card as loan purpose are negatively correlated.
+Keywords: crowdfunding; peer-to-peer lending; P2P; credit grade; FICO score; default risk
+JEL Classiﬁcation: D14; E41; G23
+1. Introduction
+Peer-to-peer (P2P) lending platforms are new ﬁnancial intermediaries connecting borrowers and
+lenders. Due to technological innovations they facilitate loans with low intermediation costs and thus
+pose a threat for traditional banks [1]. Unsurprisingly, the popularity of P2P lending is rising rapidly.
+For example, Lending Club, the biggest P2P lending platform in the world, almost doubled the amount
+of issued loans from USD 4.4 billion in 2014 to USD 8.4 billion in 2015. The remarkable growth of P2P
+lending is present in Europe [2] as well as in China [3].
+The fundamental problem of lending is information asymmetry between borrowers and lenders:
+borrowers have more information about their creditworthiness than lenders have. P2P lending
+platforms try to decrease this information asymmetry. They apply credit scoring techniques and assign
+a risk grade to each loan that may serve as a signal for lenders. Indeed, existing research [4–6] ﬁnds
+a positive correlation between a loan’s default and the assigned risk grade. They also ﬁnd further
+determinants of the default rate, for instance, the debt-to-income ratio or revolving credit utilization.
+We conjecture that the signiﬁcance of these default determinants depends on the loan’s risk grade.
+Thus, the goal of our study is to evaluate known determinants of borrowers’ default for each risk grade
+separately. We test this with a new data set consisting of 70,673 loan observations from Lending Club.
+Loans in our data set have a 36-month duration and were issued between January 2009 and December
+2012, thus avoiding a structural break in the data due to the ﬁnancial crisis in 2007/2008.
+We identify Annual Income, the Debt-to-Income ratio, Inquiries in Past 6 Months and the loan
+purposes Credit Card and Small Business as signiﬁcant determinants of default in the full data set and
+also across all loan risk classes. The signiﬁcance of other variables depends on the loan risk class.
+For example, Revolving Credit Utilization which is signiﬁcant in our full data set and in less risky loan
+classes is not signiﬁcant in loan classes with riskier loans.
+Games 2018, 9, 82; doi:10.3390/g9040082
+www.mdpi.com/journal/games
+
+Games 2018, 9, 82
+2 of 17
+We conclude that whether loan/borrower characteristics can be used to predict a loan’s default
+chances actually depends on the loan’s risk class. We connect our ﬁndings to the literature on funding
+success of P2P loans in an effort to understand to what extent insights about default determinants
+are anticipated by lenders’ choices when funding a loan. Generally, our results contribute to a better
+understanding of the mechanisms of P2P lending. Potential lenders, especially those investing in high
+risk loans, can use our ﬁndings for their advantage and allocate their money more effectively.
+The remainder of the paper is organized as follows. Related literature is reviewed in Section 2.
+We describe our data set and analytical approach in Section 3 and report our ﬁndings in Section 4.
+Section 5 concludes.
+2. Related Literature
+P2P lending platforms are currently experiencing exponential growth1 with the USA being
+the biggest P2P lending market. According to [2], there was an average yearly growth of 113%
+in P2P consumer lending between 2012 and 2014 in Europe (excluding the UK). The amount of
+funded P2P consumer loans increased from EUR 62.5 million in 2012 to EUR 274.6 million in 2014.
+Furthermore, Ref. [3] add that P2P lending has been rapidly growing in China since its launch in 2007.
+According to [10], there were 1575 P2P lending platforms in 2014 with an estimated volume of funded
+loans between USD 20 and 40 billion by the end of 2015. These numbers would make China the second
+largest P2P lending market in the world.
+2.1. Funding Success of P2P Loans
+A number of studies explore what factors contribute to the funding success of P2P loans. Most are
+based on data from the platform Prosper which used to be the biggest P2P lending platform in the USA.
+Prosper had many social features, such as a discussion forum and detailed borrowers’ characteristics
+including their photos. Studies, among others, by [11,12], stress the importance of social relationships
+for funding success. They ﬁnd that borrowers with better social ties are more likely to get their loans
+funded and to receive a lower interest rate. However, social features were completely removed by
+Prosper in 2008.2 Ref. [13] analyze data from the German platform Smava. Their results indicate that
+men and women are equally likely to get funded.
+Several studies focus on herding behavior in P2P lending. Ref. [14] conclude that a 1% increment
+in the number of bids represents a 15% increase of the probability of an additional bid (until the loan is
+fully funded). They also control for borrower/loan characteristics and ﬁnd that the debt-to-income
+ratio is negatively correlated with funding, while the credit grade is positively correlated with funding.
+They ﬁnd no relationship between funding and home ownership or the requested loan amount.
+Ref. [15] ﬁnd that lenders observe their peers’ lending decisions and use this information to infer
+creditworthiness of borrowers. Among their control variables, the debt-to-income ratio is negatively
+correlated with funding, while the credit grade, home owner status and the amount requested are
+positively correlated with funding.
+2.2. Determinants of Borrowers’ Default
+Investing at P2P lending platforms is a risky activity, because the offered loans are not secured.
+To decrease the information asymmetry between lender and borrower, borrowers are obliged to provide
+some personal information, such as annual income or the loan’s purpose. For example, borrowers at
+Lending Club are required to provide detailed information about themselves and their credit history.
+1
+Two reasons for the rapid emergence of P2P lending platforms are put forward in the literature: low intermediation
+costs [7,8] and credit rationing after the ﬁnancial crisis in 2007/2008 [9].
+2
+The Securities and Exchange Commission (SEC) ordered P2P lending companies to register their loans as securities and
+provide them through a bank.
+
+Games 2018, 9, 82
+3 of 17
+P2P lending platforms use this information to assess the likelihood of borrowers’ default and assign
+him or her an appropriate interest rate with a given grade class.3 It is generally assumed that the better
+the grade the more likely is the borrower to repay his or her debt.
+There are several studies, such as [12,17], examining borrowers’ characteristics and their inﬂuence
+on borrowers’ default based on data from Prosper. We do not review these studies in detail because
+of the differences between the platforms Prosper and Lending Club.4 Instead, we focus on studies
+examining borrowers’ default determinants based on Lending Club data: [4–6].
+All three are in consensus that the Credit Grade5 assigned by Lending Club is the best predictor
+for borrowers’ default. Moreover, Revolving Credit Line Utilization is another variable inﬂuencing the
+default rate mentioned in all three papers. Findings of other default determinants vary. The discrepancy
+between the ﬁndings of [4–6] might be caused by three different factors. The ﬁrst factor is the selection
+of variables potentially having an impact on borrowers’ default. For example, Ref. [4,5] found out
+that the FICO score has an inﬂuence on default. [6] did not choose the FICO score as an independent
+variable in their study. The second factor potentially creating discrepancy between the ﬁndings is the
+data set used. Speciﬁcally, differences in time frames, classiﬁcation of loan status or type of loan length
+might be the cause. For example, Ref. [4,6] used only 36-month loans. Instead, Ref. [5], used both,
+36- and 60-month loans. The last factor which might cause the discrepancy is the research method used.
+Ref. [5] used dynamic logistic regression to assess determinants inﬂuencing default rate in P2P lending.
+Ref. [6] conducted their study with a combination of univariate means test and Cox regression. Ref. [4]
+chose binary logistic regression for their analysis. For better clarity, we summarize this information in
+Table 1.
+Table 1. Summary of Borrowers’ Default Determinants.
+Name of Study
+Data Set
+Method Used
+Findings
+Emekter et al. (2015)
+May 2007–June 2012
+(36- & 60-month loans)
+Binary logistic regression
+Credit Grade, FICO score, Debt-to-Income
+and Revolving Credit Utilization
+Serrano-Cinca et al. (2015)
+January 2008–December 2011
+(36-month loans)
+Univariate means test
+and Cox regression
+Credit Grade, Annual Income, Loan Purpose,
+Debt-to-Income, Current Housing Situation, Credit
+History Length, Revolving Credit Utilization, Recent
+Inquiries, Deliquency in Past 2 Years, Open Credit Lines
+Carmichael (2014)
+June 2007–October 2013
+(36-month loans)
+Dynamic logistic
+regression
+Credit Grade, Annual Income, Loan Purpose,
+FICO score, Revolving Credit Utilization, Recent
+Inquiries, Credit History Length, Time since Last
+Delinquency, Loan Amount, Loan Description
+3. Data and Method
+The aim of our study is to evaluate determinants of borrowers’ default within given loan grade
+classes in P2P lending. The data we use come from Lending Club, the biggest P2P lending platform in
+the world with total loan issuance of almost $16 billion by the end of 2015 [18]. First of all, we explain
+the Lending Club process and the way how a prospective borrower can apply for a loan. Secondly,
+we describe our data set. Thirdly, we explain the main variables of interest. At the end of this section,
+we provide descriptive statistics of our variables and correlational matrixes.
+3
+An accurate credit scoring predictive model is crucial for P2P lending platforms. Ref. [16] conduct an extensive literature
+review of more than 200 articles about credit scoring models. They conclude that there does not exist a single best statistical
+technique used for the creation of credit scoring models.
+4
+Before the SEC regulation, as discussed above, Prosper used the Dutch auction to determine the appropriate interest rate
+for borrowers. Moreover, Prosper used social features enabling social network effects between borrowers and lenders.
+Even after the SEC regulation, there are still signiﬁcant differences between the platforms. These differences might make the
+comparison of determinants inﬂuencing borrowers’ default inaccurate.
+5
+To better differentiate and highlight variables, we write them with capital letters and in italics.
+
+Games 2018, 9, 82
+4 of 17
+3.1. The Lending Club Process
+The Lending Club connects people who want to borrow money with people who are willing to
+lend their money. Before applying for a loan at the Lending Club, a prospective borrower should ﬁnd
+out the value of his/her FICO score which is widely used by banks and credit providers in the USA.6
+The FICO score represents the creditworthiness of a person. It is computed based on a borrower’s
+personal credit report provided by national credit bureaus in the USA. The exact formula for the
+FICO score computation is held secret, only approximate weights of given categories are made public.7
+About 90% of borrowers’ applications at Lending Club is rejected because of an insufﬁcient FICO
+score. Only potential borrowers with a FICO score of at least 600 are allowed to apply for a loan at
+Lending Club.
+The potential borrower is further asked to provide some personal and loan information.
+The self-reported information is his/her Annual Income, the current Home Situation (potential options
+are own, mortgage or rent), the Length of Employment, the Loan Purpose and a Loan Description. All of
+this information, except Loan Description, are mandatory.
+After checking a borrower’s FICO score and his/her self-reported information, Lending Club
+assigns a risk Loan Grade, from A to G, followed by a more accurate risk Loan Subgrade, from A1 to G5,
+and a corresponding interest rate. The interest rate charged for A1 was 5.32% and 28.99% for G5 in the
+ﬁrst quarter of 2016. Lending Club’s credit scoring model is kept secret. The P2P lending platform,
+however, afﬁrms that the risk Loan Grade and Subgrade are computed based on the borrower’s FICO
+score and his or her personal and loan information.
+If the offered loan conditions and the interest rate are accepted by the borrower, Lending Club
+announces the loan on its website. Potential lenders can then view the loan online and start to fund it.
+During the loan’s funding period, Lending Club might ask the borrower to verify the self-reported
+information. The loan might be removed from Lending Club’s website, if the borrower’s self-reported
+information cannot be veriﬁed. However, if the loan gets funded before the veriﬁcation is done,
+the veriﬁcation is not needed anymore and the loan is issued.
+3.2. Our Data Set
+In an effort to be fully transparent about company and loan performance, the Lending Club
+makes public the data of every loan they have ever issued. The information about these loans used to
+be updated daily, then monthly and currently is updated quarterly. Our Lending Club data set was
+downloaded in February 2016. It contains information about 884,633 loans issued between June 2007
+and December 2015.
+From this data we chose only loans issued between January 2009 and December 2012 with
+36-months duration. We focus on this period because of the following reasons. First, the default rate
+(16.10%) of loans issued before January 2009 is higher than the default rate (12.49%) of loans issued
+between January 2009 and December 2012 (two-sided t-test, p < 0.001). This difference might be
+caused by the ﬁnancial crisis in 2007/2008 which hit hard many US households. We decided to use
+only observations after 2008 in order to avoid a structural break in our data set. Moreover, we have not
+included loans issued after December 2012 as their maturity has not yet been reached. For a similar
+reason we have neither included loans with 60-month duration. Loans with 60-month duration were
+ﬁrstly introduced in 2010. Therefore, their maturity has not yet been reached in the data set we have.
+For our analysis, we classify loans in our data set as ‘Fully Paid’ or as ‘Charged Off’.
+This classiﬁcation will help us to differentiate between good (Fully Paid) and bad (Charged Off)
+loans. The loans in our data set, however, have six different statuses: Fully Paid, Charged Off, Current,
+6
+According to myf [19], up to 90% of top lenders use the FICO score.
+7
+The FICO score consists of ﬁve categories from a person’s ﬁnancial history: the payment history (about 35% weight),
+debt burden (30% weight), length of credit history (15%), types of credit used and recent searches for credit (both 10%).
+
+Games 2018, 9, 82
+5 of 17
+Default, Late (31–120 days), Late (16–30 days) and In Grace Period. See Part A in Table 2 for the
+distribution of loan statuses in our data set. A loan is marked as Fully Paid when the full principal
+with interest rates is paid back. A loan with status Charged Off is a loan where a borrower defaulted
+on the loan and the loan will never be paid back in full amount. Even though we have chosen our
+dataset’s time span so that all loans are supposed to have already reached their maturity, there are still
+some loans which have not been completely paid back or charged off. This is usually caused by some
+delayed instalments in the credit life span. Delayed instalments extend the whole maturity of a loan.
+These loans have statuses Current, In Grace Period, Late (16–30 days), Late (31–120 days) or Defaulted.
+There are 33 loans with status Current. These loans are currently being paid back. We do not include
+them in our analyses, because we do not know whether they will or will not be paid back. In a
+similar vein, there are six loans with status In Grace Period and 6 loans with status Late (16–30 days).
+In Grace Period means that a loan instalment is delayed by at most 15 days. A loan with status Late
+(16–30 days) has a delayed instalment between 16–30 days. We do not consider loans with statuses
+In Grace Period and Late (16–30 days) as Charged off, because these loans are not delayed by more
+than 30 days. According to the Lending Club statistics, 75% of loans with status Late (31–120 days)
+are charged off [18]. We believe that this percentage is even higher for loans with instalment delayed
+by 90 or more days. There are 81 loans with status Late (31–120 days) and 46 of them are delayed by
+more than 90 days. We consider all of them as Charged Off. Loans with status Default have delayed
+instalment by more than 120 days. We consider them as Charged Off. The proportion of Fully Paid and
+Charged Off loans are shown in Part B of Table 2. The number of Charged Off loans in Part B includes
+all Charged Off loans from Part A, 46 loans with status Late (31–120 days) and 12 Default loans.
+Table 2. Distribution of Loan Statuses.
+Part A
+Part B
+Initial Data Set Distribution
+Final Data Set Distribution
+Loan Status
+# of Loans
+Loan Status
+# of Loans
+- Fully Paid
+61,836
+- Fully Paid
+61,836
+- Charged Off
+8779
+- Charged Off
+8837
+- Current
+33
+- In Grace Period
+6
+- Late (16-30 days)
+6
+- Late (31-120 days)
+81 (46)
+- Default
+12 (12)
+Total number
+70,753
+Total number
+70,673
+Note: The number in parentheses of loans with status Late (31–120 days) or Default denote how many of
+these loans are considered as Charged Off in Part B.
+We distinguish between the following loan risk classes in our analysis. A-graded loans belong
+to the Low-Risk Class, the Medium-Risk Class consists of B-graded loans and C-graded loans are in the
+High-Risk Class. Loans graded with D, E, F and G are aggregated to the Very High-Risk Class in order
+to make the classes somewhat comparable in terms of the number of observations. Table 3, part A,
+provides an overview of the four loan classes and their corresponding loan grades, average default
+rates and average FICO scores. Loans in the Very High-Risk Class, see part B in Table 3, are quite similar
+in terms of FICO score and default rate. Only the default rate of G-graded loans stands out. However,
+as there are only 76 G-graded loans, it would not be useful to create a separate group for these loans.
+Therefore, we added G-graded loans to the same class as D-, E- and F-graded loans.
+
+Games 2018, 9, 82
+6 of 17
+Table 3. Loan Risk Classes.
+Part A: Overview of Loan Risk Classes
+Type of Class
+Loan Grade
+# of Loans
+Default Rate
+FICO Score
+Low-Risk Class
+A
+20,041
+6.6%
+750
+Medium-Risk Class
+B
+25,539
+11.8%
+707
+High-Risk Class
+C
+15,117
+16.5%
+687
+Very High-Risk Class
+D, E, F, G
+9976
+20.1%
+677
+All Loan Classes
+70,673
+12.5%
+710
+Part B: Composition of Very High-Risk Class
+Loan Grade
+# of Loans
+Default Rate
+FICO Score
+D
+8045
+19.7%
+677
+E
+1569
+21.2%
+675
+F
+286
+22.0%
+673
+G
+76
+30.2%
+672
+Very High-Risk Class
+9,976
+20.0%
+677
+3.3. Variables of Interest
+There are 78 variables in the data set provided by Lending Club.8 Not all are of interest for us as
+some do not include any values (such as Personal Finance Inquiries and Finance Trades) or do not contain
+useful information for our purposes (like Loan URL and Loan ID).
+Our variables of interest can be divided into two sources of information origin. The ﬁrst source
+is the borrower’s self-reported information. Borrower’s self-reported information are Annual Income,
+Housing Situation, Length of Employment, Loan Amount, Loan Purpose, and Loan Description. The second
+source of information origin is the borrower’s credit ﬁle provided by one of three national credit
+bureaus in the USA. We choose the following variables from a borrower’s credit ﬁle: Debt−to−Income,
+Delinquency in Past 2 Years, Date of First Credit Line, Inquiries in Past 6 Months, Months since Last
+Delinquency, Months since Last Record, Open Credit Lines, and Revolving Credit Utilization. The description
+of our variables is included in Table A1 in Appendix A.
+We modiﬁed two variables from the original data set. The ﬁrst variable is Loan Description. It is
+provided by a borrower when applying for a loan. There are many ways to use Loan Description as an
+independent variable that might be the predictor for borrowers’ default. For example, Ref. [5] extracted
+two dummy variables from Loan Description: Borrower’s Self-Claimed Creditworthiness and Description
+Lacking Full Stop. He found that both variables are signiﬁcant for default prediction. Our approach is
+different from [5]. We count the number of characters in Loan Description and call this new variable
+Number of Characters. The second variable of interest from the original data set that was modiﬁed is
+Date of First Credit Line. It is a variable in the form of ‘month-year’ and represents the reported date of
+the ﬁrst open credit line. We transformed this variable into the number of years since the ﬁrst reported
+credit line was opened. The name of this new variable is Length of Credit History.
+Thus, our variables are fairly similar to variables used by [4–6]. Unlike these papers though,
+we do not include information about the Loan Subgrade and the FICO Score. Furthermore, we neither
+include the Loan Grade nor the Interest Rate. All these variables are highly correlated, because Loan
+Subgrade, which is more speciﬁc than Loan Grade, is largely based on the FICO score. The interest rate is
+then assigned based on the Loan Subgrade.
+8
+We have downloaded the data from the download data section at the Lending Club website. Moreover, the download data
+section’s Data Dictionary provides variable descriptions [18].
+
+Games 2018, 9, 82
+7 of 17
+3.4. Descriptive Statistics
+Table A2 in Appendix B contains the correlation matrix table of all non-categorical variables.
+The correlation matrix is based on our full data set of 70,673 observations. The highest correlation
+(0.33) is between Debt-to-Income and Open Credit Lines. The second largest correlation, which is 0.29,
+is between Annual Income and Loan Amount. All correlations between Default and other variables are
+less than 0.1. The most correlated variable with Default is Revolving Credit Utilization with a correlation
+of 0.08.
+Table A3 in Appendix B contains descriptive statistics of our full data set. There are 82 missing
+values of Revolving Credit Utilization and 2538 missing values of Length of Employment. We have
+excluded all 82 observations with missing values of Revolving Credit Utilization from our data set.
+Excluding 2538 observations with missing values of Length of Employment from our dataset would
+mean a signiﬁcant loss of information for our hypotheses testing. However, we have found that the
+Length of Employment is not a signiﬁcant determinant of borrowers’ default. This ﬁnding allows us to
+exclude the Length of Employment from our further analysis.
+Overall, there are 15 observations in our data set with a self-reported income exceeding USD
+1,000,000 and we have decided to exclude these outliers. Thus our ﬁnal data set for the remaining
+analyses includes 70,579 observations.
+Table A4 in Appendix B presents mean values of the non-categorical variables, in particular loan
+classes. Interestingly, the highest mean of Annual Income is in the Very High-Risk Class. Furthermore,
+borrowers from the Very High-Risk Class wrote, on average, the longest loan descriptions. They might
+be afraid that their loan will not be funded because of their inferior credit grade. Therefore, they might
+try to provide a sound explanation of the loan need to their potential funders. Concerning Loan Amount,
+Delinquency in past 2 Years, Inquiries in Past 6 Months, Months since Last Delinquency and Months since
+Last Record, Open Credit Lines and Revolving Credit Utilization variables, we can observe a rising trend of
+variable mean values from Low-Risk Class to Very High-Risk Class. The only variable with a declining
+trend of its mean value is the Length of Credit History.
+Finally, we look at the default statistics of our categorical variables. Table A5 in Appendix B
+contains the Loan Purpose default statistics. The trend of the default rate is clearly rising with the
+riskiness of a given loan class—starting with a default rate of 6.59% in the Low-Risk Class and ending
+with 20.06% in the Very High-Risk Class. The two most frequent loan purposes are Debt Consolidation
+(51.94% of all loans) and Credit Card (18.28%). Furthermore, the purposes Car and Major Purchase have
+the smallest default rates across all classes. On the other hand, loans with purpose Small Business or
+Renewable Energy have the highest default rate in the All Classes category.9 It is interesting to observe
+how default rates of given Loan Purposes change in particular loan classes. For example, loans with the
+purpose Moving have a higher default rate in the Medium-Risk Class (17.97%) than in the High-Risk Class
+(14.74%). Similar examples are loans with Home Improvement, Vacation or Car purpose. Table A6 in
+Appendix B contains the Home Situation default statistics. As expected and similarly to the Loan Purpose
+the default rate is rising with the riskiness of a given loan class. The most frequent Home Situations are
+Rent (48.80% of all loans) and Mortgage (42.86%). The frequency of the Home Situation Other (0.16% of
+all loans) and No Information (0.05%) are negligible.
+4. Results
+We generally use binary logistic regression speciﬁcations to analyze the determinants of borrowers’
+default.10 We use backward stepwise elimination to ﬁnd the most suitable model speciﬁcation, that is,
+9
+We do not further comment loans with Renewable Energy purpose, because they make up only a small percentage (0.20%) of
+all loans. The same applies to the loans with purpose Education (0.34%).
+10
+All statistical analyses are performed using the software R (version 3.2.3) with its integrated development environment
+called RStudio. We use the glm function of the family binomial.
+
+Games 2018, 9, 82
+8 of 17
+we start with a full model including all 13 variables of interest. We then drop every variable with
+ap-value higher than 0.1 starting with the variable with the highest p-value. Backward stepwise
+elimination is sometimes criticized for producing models which do not ﬁt the data well. Critics of
+this approach argue that other models might dominate the model achieved by backward stepwise
+elimination in terms of the Akaike information criterion (AIC), a measurement of relative model
+quality for a given data set. As a robustness check, we have run additional regressions which
+employ an automated selection of the best model with AIC as criterion. All of our speciﬁcations
+reached by backward stepwise elimination are the same as the speciﬁcations chosen by using AIC as
+selection criterion.
+We ﬁrst run a logistic regression on the full data set (All Classes) because of two reasons. We want
+to compare our All Classes ﬁndings with results of [4–6]. Moreover, this allows us to highlight the
+differences between our regression results from given loan classes and the regression ﬁndings based
+on the whole data set.
+Results from the All Classes regression are in Table 4.
+The coefﬁcients of Loan Amount,
+Debt-to-Income, Delinquency in Past 2 Years, Inquiries in Past 6 Months, Revolving Credit Utilization,
+Months since Last Record are all positive and highly signiﬁcant. The coefﬁcients of Annual Income,
+Number of Characters and Lenght of Credit History are all negative and highly signiﬁcant. The variable
+Open Credit Lines is not signiﬁcant.
+The loan purposes Car, Credit Card, Debt Consolidation,
+Home Improvement, Major Purchase, and Wedding are negatively correlated with loan default,
+while Renewable Energy, and Small Business are positively correlated with loan default. Home ownership
+(status Mortgage) is negatively correlated with loan default.
+We proceed with regressions for the four loan risk classes, see also Table 4. Results for the Low
+Risk and Medium Risk classes only differ slightly from the All Classes results. In both the Lenght of Credit
+History and the loan purpose Home Improvement are not signiﬁcant anymore. Months since Last Record is
+not signiﬁcant in the Low Risk class, while it is signiﬁcant in the Medium Risk class. Delinquency in Past
+2 Years is not signiﬁcant in the Medium Risk class, while it is highly signiﬁcant in the Low Risk class.
+In the High Risk and Very High Risk classes, the Number of Characters are not signiﬁcant anymore as
+well as the loan purposes Car, Debt Consolidation, Home Improvement and Renewable Energy. The Lenght
+of Credit History is not signiﬁcant in the High Risk class but it is signiﬁcant in the Very High Risk class.
+The loan purpose Major Purchase is not signiﬁcant anymore in the Very High Risk class.
+Revolving Credit Utilization has been found to be a signiﬁcant predictor for borrowers’ default in
+all related studies [4–6] as well as in our All Classes data. However, it is only signiﬁcant in our Low-Risk
+and Medium-Risk Classes. It is not a signiﬁcant determinant in the High-Risk and Very High-Risk Class.
+Result 1. Revolving Credit Utilization is a positive determinant of borrowers’ default only in low loan
+risk classes.
+The Debt-to-Income ratio is signiﬁcant in all loan classes. In fact, the Debt-to-Income ratios for
+defaulted/non-defaulted loans have almost identical values across risk classes.
+Result 2. The Debt-to-Income ratio is a positive determinant of borrowers’ default in all loan risk classes.
+The current Housing Situation is a signiﬁcant determinant of default in All Classes, as well as in the
+Low-Risk, Medium-Risk and High Risk classes. It is, however, not signiﬁcant in the Very High-Risk Class.
+Defaulting on a loan when having a mortgage on a house would mean the loss of the house. Therefore,
+there might be a higher motivation for borrowers to avoid default when having the mortgage than
+living in a rented home. One of the possibilities to avoid default is to take a further loan. Borrowers from
+the Very High-Risk Class may not have such an opportunity which might explain that there is no effect
+of the Current Housing Situation.
+
+Games 2018, 9, 82
+9 of 17
+Table 4. Regression results for all classes and each class separately.
+Variable
+All Classes
+Low-Risk Class
+Medium-Risk Class
+High-Risk Class
+Very High-Risk Class
+AME
+Std. Errors
+AME
+Std. Errors
+AME
+Std. Errors
+AME
+Std. Errors
+AME
+Std. Errors
+Annual Income
+−0.0009 ***
+0.0000
+−0.0007 ***
+0.0001
+−0.0008 ***
+0.0001
+−0.0009 ***
+0.0001
+−0.0007 ***
+0.0001
+HS: None
+0.0458
+0.0641
+−0.0729 ***
+0.0029
+0.2064
+0.1325
+−0.0308
+0.1249
+not signiﬁcant
+HS: Other
+0.0629 *
+0.0368
+0.0717
+0.0916
+0.1216 *
+0.0694
+−0.0686
+0.0547
+not signiﬁcant
+HS: Own
+−0.0027
+0.0047
+−0.0067
+0.0065
+−0.0084
+0.0074
+−0.0036
+0.0112
+not signiﬁcant
+HS: Mortgage
+−0.0183 ***
+0.0028
+−0.0135
+0.0039
+−0.0121 **
+0.0045
+−0.0085
+0.0069
+not signiﬁcant
+Loan Amount
+0.0020 ***
+0.0002
+0.0007 *
+0.0003
+0.0013 ***
+0.0004
+0.0004
+0.0006
+0.0013 *
+0.0006
+Number of Characters
+−0.0000 ***
+0.0000
+−0.0000 **
+0.0000
+−0.0000 ***
+0.0000
+not signiﬁcant
+not signiﬁcant
+LP: Car
+−0.0417 ***
+0.0097
+−0.0211
+0.0114
+−0.0272
+0.0167
+−0.0446
+0.0263
+−0.0831 *
+0.0349
+LP: Credit Card
+−0.0563 ***
+0.0057
+−0.0408 ***
+0.0080
+−0.0472 ***
+0.0093
+−0.0497 ***
+0.0138
+−0.0649 ***
+0.0176
+LP: Debt Consolidation
+−0.0277 ***
+0.0054
+−0.0278 ***
+0.0076
+−0.0202 *
+0.0089
+−0.0218
+0.0129
+−0.0230
+0.0159
+LP: Education
+0.0132
+0.0252
+−0.0404
+0.0282
+0.0596
+0.0477
+−0.0609
+0.0414
+0.0770
+0.0807
+LP: Home Improvement
+−0.0227 ***
+0.0077
+−0.0230 *
+0.0098
+−0.0143
+0.0128
+0.0048
+0.0197
+−0.0364
+0.0248
+LP: House
+0.0005
+0.0165
+−0.0126
+0.0201
+0.0010
+0.0276
+0.0183
+0.0438
+0.0470
+0.0554
+LP: Major Purchase
+−0.0492 ***
+0.0080
+−0.0361 ***
+0.0097
+−0.0471 ***
+0.0132
+−0.0527 **
+0.0202
+−0.0254
+0.0288
+LP: Medical
+0.0139
+0.0127
+−0.0064
+0.0159
+0.0393
+0.0227
+0.0049
+0.0292
+0.0205
+0.0394
+LP: Moving
+0.0111
+0.0138
+0.0131
+0.0198
+0.0453 *
+0.0241
+−0.0453
+0.0300
+0.0091
+0.0418
+LP: Renewable Energy
+0.0793 *
+0.0370
+0.0984
+0.0615
+0.1198 *
+0.0638
+0.0113
+0.0806
+0.0422
+0.1030
+LP: Small Business
+0.0814 ***
+0.0107
+0.0595 ***
+0.0160
+0.0801 ***
+0.0189
+0.0744 **
+0.0255
+0.0749 **
+0.0258
+LP: Vacation
+0.0044
+0.0156
+0.0466 *
+0.0237
+−0.0022
+0.0248
+−0.0135
+0.0358
+−0.0656
+0.0461
+LP: Wedding
+−0.0442 ***
+0.0101
+−0.0351 *
+0.0132
+−0.0248
+0.0177
+−0.0556 *
+0.0233
+−0.0816 *
+0.0293
+Debt-to-Income
+0.1025 ***
+0.0177
+0.0867 ***
+0.0249
+0.0799 **
+0.0289
+0.2006 ***
+0.0424
+0.1758 **
+0.0569
+Delinquency in Past 2 Years
+0.0114 ***
+0.0019
+0.0162 ***
+0.0043
+not signiﬁcant
+−0.0082 *
+0.0047
+not signiﬁcant
+Length of Credit History
+−0.0009 ***
+0.0002
+not signiﬁcant
+not signiﬁcant
+not signiﬁcant
+−0.0022 ***
+0.0007
+Inquiries in Past 6 Months
+0.0225 ***
+0.0012
+0.0126 ***
+0.0017
+0.0152 ***
+0.0020
+0.0163 ***
+0.0029
+0.0181 **
+0.0038
+Months since Last Delinquency
+0.0002 *
+0.0001
+not signiﬁcant
+−0.0002 *
+0.0001
+−0.0003 *
+0.0001
+not signiﬁcant
+Months since Last Record
+0.0004 ***
+0.0001
+not signiﬁcant
+0.0002 *
+0.0001
+0.0003 *
+0.0001
+0.0004 *
+0.0002
+Open Credit Lines
+not signiﬁcant
+not signiﬁcant
+not signiﬁcant
+not signiﬁcant
+not signiﬁcant
+Revolving Line Utilization
+0.1111 ***
+0.0052
+0.0642 ***
+0.0081
+0.0371 ***
+0.0097
+not signiﬁcant
+not signiﬁcant
+Number of observations
+70,673
+20,041
+25,539
+15,117
+9976
+Note: Marginal effects reported; annual income and loan amount in 1000 Euros; signiﬁcance code is ‘***’ for 0, ‘**’ for 0.001 and ‘*’ for 0.01.
+
+Games 2018, 9, 82
+10 of 17
+Result 3. Home ownership is not a signiﬁcant determinant of borrowers’ default in the highest loan risk class.
+Overall, creditworthy borrowers write, on average, 169 characters in their loan descriptions
+compared to 157 characters in loan descriptions of defaulted loans. This difference is highly signiﬁcant
+(p < 0.001). Moreover, it is interesting to observe that borrowers in the Very High-Risk Class write,
+on average, the most characters in their Loan Description compared to borrowers from other classes.
+Borrowers from the Very High-Risk Class might feel that their Loan Description must be comprehensive
+in order to get funding with a risky loan grade. However, the Number of Characters are neither
+signiﬁcant in the Very High-Risk Class nor in the High-Risk Class, while they are in low risk classes.
+Result 4. In low loan risk classes, creditworthy borrowers write, on average, a longer Loan Description than
+borrowers who defaulted.
+It seems that a loan used for Credit Card consolidation has a signiﬁcantly higher chance to be paid
+back even in the Very High-Risk Class, while loans used for a Small Business generally bear a higher
+risk of default independently of the associated risk class. For example, the default rates of loans with
+purpose Small Business are twice as high as default rates of loans with Car or Wedding as the purpose.
+Results 5. The loan purposes Credit Card and Small Business are signiﬁcant determinants of borrowers’ default
+in all loan risk classes.
+The Length of Credit History is negatively correlated with loan default in our All Classes regression
+results.
+This ﬁnding is in line with [5,6]’s results.
+However, it is only supported in the Very
+High-Risk Class. The Length of Credit History is not a signiﬁcant determinant of default in the Low-Risk,
+Medium-Risk and High-Risk classes. It seems that experience with loans in the Very High-Risk Class is of
+advantage as people get used to live close to their credit limits. For example, a young man without any
+previous credit experiences classiﬁed to be in the Very High-Risk Class, also without any ﬁnancial buffer,
+can easily overdraw his credit. This might cause a default because of insufﬁcient credit experience and
+a lack of possibilities of obtaining an additional loan.
+Result 6. The Length of Credit History is a negative determinant of borrowers’ default only in the High-Risk Class.
+Discussion
+In our full data set, all variables of interest turn out to be signiﬁcant determinants of default
+except the variable Open Credit Lines. Table 5 provides a comparison of our All Classes ﬁndings and
+the previously mentioned studies. Generally, discrepancies of results could be due to the fact that
+our data avoids the structural break of loan defaults possibly caused by the 2007/08 ﬁnancial crisis.11
+See Table 1 for differences of the data and methodology. The only difference to [5]’s results is that
+Debt-to-Income is not a signiﬁcant predictor of borrowers’ default in his study. This difference might be
+caused by the fact that [5] used loans with status ‘current’ in his analyses. Comparing our results to [6],
+two discrepancies are worth to note. Loan Amount is not signiﬁcant in their study but in ours and Open
+Credit Lines is signiﬁcant in theirs but not in ours. Finally, our All Classes results are quite different
+from [4]’s results. Besides differences in the time frame of the data set, Ref. [4] include the Loan Credit
+Grade and FICO score as explanatory variables in their regression. A high correlation between FICO
+score and other variables of interest is to be expected, because the FICO score is computed based on
+these values. The same may apply to the Loan Grade.
+11
+We show that loans issued before 2009 have signiﬁcantly higher default rates than loans issued between 2009 and 2012.
+
+Games 2018, 9, 82
+11 of 17
+Table 5. Comparison of Findings.
+Variable/Paper
+Serrano-Cinca et al.
+Carmichael
+Emekter et al.
+Our Classes
+(2015) [6]
+(2014) [5]
+(2015) [4]
+All
+Low-Risk
+Medium-Risk
+High-Risk
+Very High-Risk
+Annual Income
+x
+x
+x
+x
+x
+x
+x
+Loan Amount
+x
+x
+x
+x
+x
+x
+Number of Characters
+not measured
+not measured
+not measured
+x
+x
+x
+Debt-to-Income
+x
+x
+x
+x
+x
+x
+x
+Delinquency in Past 2 Years
+x
+not measured
+x
+x
+x
+Length of Credit History
+x
+x
+x
+x
+Inquiries in Past 6 Months
+x
+x
+x
+x
+x
+x
+x
+Months since Last Delinquency
+x
+x
+x
+x
+Months since Last Record
+not measured
+not measured
+x
+x
+x
+x
+Open Credit Lines
+x
+not measured
+Revolving Credit Utilization
+x
+x
+x
+x
+x
+x
+Loan Purpose
+x
+x
+x
+x
+x
+x
+x
+Home Situation
+x
+not measured
+not measured
+x
+x
+x
+x
+Note: The mark x denotes that a given variable was found to be a signiﬁcant determinant of borrowers’ default.
+Overall, we ﬁnd the following determinants of borrowers’ default which are signiﬁcant in All
+Classes as well as in the loan classes separately: Annual Income, Debt-to-Income, Inquiries in Past 6 Months
+and the loan purposes Credit Card and Small Business. The signiﬁcance of other variables varies class
+by class. Revolving Credit Utilization, Number of Characters or the Lenght of Credit History are signiﬁcant
+for All Classes but not in given loan classes. Only Open Credit Lines is neither signiﬁcant in any class
+nor on the full data set.
+In terms of economic signiﬁcance, the following changes of the predicted default probability
+result from a one standard deviation change of our main explanatory variables: Annual Income (0.005),
+Debt-to-Income (0.01), Inquiries in Past 6 Months (0.02) and the loan purposes Credit Card (−0.06) and
+Small Business (0.08). Given that, on average, 12.5% of all loans default, a one standard deviation
+change of the Debt-to-Income ratio increases the chances of default by 6%.12 This value increases to 12%
+for high risk loans.
+As a robustness check of our loan grade classiﬁcation we merge the two smallest classes, the High
+and Very High-Risk Class, and consider them jointly. All regressors that are signiﬁcant in the High-Risk
+Class are at least as signiﬁcant in the regression speciﬁcation with observations from both risk classes.
+In addition, the variables Loan Amount and Months since Last Record are positively correlated with
+default. The loan purposes Car and Wedding are negatively correlated with default.
+Finally, we address to what extent these insights are taken into account by lenders, when they
+decide whether to fund a loan or not. For this purpose, we draw on evidence from existing studies
+who analyze the funding success of P2P loans. According to both [14,15] loans have a higher chance
+to attract funding, the lower the debt-to-income ratio is and the better the credit grade is. Moreover,
+Ref. [15] ﬁnd a positive correlation between funding success and the amount requested as well as
+whether the borrower’s home is owned. Our analysis reassures lenders’ skepticism about a borrower’s
+debt-to-income ratio. Other characteristics warrant more caution. We ﬁnd that the home ownership
+status is only a good indicator of a loan getting paid back if the loan is not from the highest risk class.
+Our results provide insights for potential P2P lenders, especially those who seek to strictly
+maximize their proﬁt. As mentioned in Section 3, investing in the Very High-Risk Class at Lending Club
+historically yields the highest net proﬁt (after accounting for defaulted loans). Thus, investors whose
+primary goal is to achieve a high return on their investment will target the high risk segment and
+will try to optimize their loan portfolio choices. Our results contribute to a better understanding to
+what extent our existing knowledge about loan default determinants applies in this high risk segment.
+It seems that for high risk loans Revolving Credit Utilization or the Home Situation status are treacherous
+predictors of default. Instead, the mindful investor should target the Length of Credit History, Inquiries in
+12
+The standard deviation of the Debt-to-Income ratio is 0.074, see Table A3. Multiplying with the marginal effect (0.1025) results
+in a predicted change of 0.007585. This is 6% of the average default probability of 0.125.
+
+Games 2018, 9, 82
+12 of 17
+Past 2 Years, Annual Income, the Debt-to-Income ratio and the loan purposes Credit Card or Small Business
+as reliable predictors of default.
+5. Conclusions
+P2P lending connects people in need for a loan with people willing to lend their money.
+The intermediation of credit is handled through more or less automated online platforms with very
+low transaction costs. The beneﬁts of automation can transform into lower interest rates for borrowers
+and higher interest earnings for lenders in comparison to traditional banks.
+However, information asymmetries between borrowers and lenders remain a central issue faced
+by P2P lending platforms. Credit scoring techniques are employed to address this. They assign a credit
+grade to each loan based on the perceived risk of default. Riskier loans are associated with higher
+interest rates as higher interest rates serve as compensation for a potential loan default. Besides the
+credit grade and interest rate, P2P lending platforms usually provide a prospective lender with a large
+amount of information about a loan’s and borrower’s characteristics.
+Previous research [4–6] identifed some of the borrower’s and loan’s information as useful
+determinants for borrowers’ default. We conjecture that the signiﬁcance of default determining
+variables might not be the same in different loan risk classes. In other words, some variables are only
+signiﬁcant default determinants in speciﬁc loan classes.
+While results on our full data set are largely in line with ﬁndings of previous studies, our set of
+separate regressions for each loan risk class identiﬁes only Annual Income, Debt-to-Income, Inquiries in
+Past 2 Years and the loan purposes Credit Card and Small Business as signiﬁcant determinants of loan
+default in all loan risk classes. Revolving Credit Utilization, Delinquency in Past 2 Years and Number of
+Characters are only signiﬁcant for low loan risk classes. Lenght of Credit History is only signiﬁcant for
+high loan risk classes.
+Our analysis conﬁrms that loan/borrower characteristics can indeed be used to predict a loan’s
+default chances. However, since default determinants depend on the loan’s risk class, caution is
+warranted. What seems to be a good predictor of loan default based on overall data may not be reliable
+in the highest loan risk class. This is relevant since the high risk segment is most attractive to some
+lenders due to the highest returns that can be reached.
+Author Contributions: Conceptualization, M.P.; methodology, M.P.; software, M.P.; validation, M.P.; formal
+analysis, M.P.; investigation, M.P.; resources, M.P.; data curation, M.P.; writing—original draft preparation, M.P.;
+writing—review and editing, T.R.; visualization, M.P.; supervision, T.R.; project administration, T.R.; funding
+acquisition, T.R.
+Funding: Tobias Regner gratefully acknowledges support by the Deutsche Forschungsgemeinschaft (DFG,
+German Research Foundation)—project number 628902.
+Conﬂicts of Interest: On behalf of all authors, the corresponding author states that there is no conﬂict of interest.
+
+Games 2018, 9, 82
+13 of 17
+Appendix A
+Variables of Interest
+Table A1. Variables of Interest and their Descriptions.
+Borrower’s Self-Reported Information
+Name of variable
+Description of variable
+Annual Income
+The self-reported annual income provided by the borrower during registration.
+Housing Situation
+The home ownership status provided by the borrower during registration.
+Our values are: RENT, OWN, MORTGAGE, OTHER.
+Length of Employment
+Employment length in years. Possible values are between 0 and 10 where 0 means
+less than one year and 10 means ten or more years.
+Loan Amount
+The listed amount of the loan applied for by the borrower.
+Loan Purpose
+A category provided by the borrower for the loan request.
+Number of Characters
+The number of characters used by borrower for loan description.
+Information From Borrower’s Credit File
+Name of Variable
+Description of Variable
+Debt-to-Income
+A ratio calculated using the borrower’s total monthly debt payments on the total
+debt obligations, excluding mortgage and the requested LC loan, divided by
+the borrower’s self-reported monthly income.
+Delinquency in Past 2 Years
+The number of 30+ days past-due incidences of delinquency in the borrower’s
+credit ﬁle for the past 2 years.
+Length of Credit History
+The number of years since the ﬁrst reported credit line was opened.
+Inquiries in Past 6 Months
+The number of inquiries in past 6 months (excluding auto and mortgage inquiries).
+Months since Last Delinquency
+The number of months since the borrower’s last delinquency.
+Months since Last Record
+The number of months since the last public record.
+Open Credit Lines
+The number of open credit lines in the borrower’s credit ﬁle.
+Revolving Credit Utilization
+Revolving credit line utilization rate or the amount of credit the borrower
+is using relative to all available revolving credit.
+
+Games 2018, 9, 82
+14 of 17
+Appendix B
+Descriptive Statistics
+Table A2. Correlation Matrix.
+Default
+Loan
+Amount
+Length of
+Employment
+Annual
+Income
+Number of
+Characters
+Debt-to-
+Income
+Delinquency
+in Past 2 Years
+Lenght of
+Credit History
+Inquiries in
+Past 6 Months
+Months since
+Last Deliquency
+Months since
+Last Record
+Open
+Credit Lines
+Revolving Credit
+Utilization
+Default
+1
+−0.01
+0.00
+−0.05
+−0.01
+0.06
+0.01
+−0.04
+0.06
+0.01
+0.02
+0.00
+0.08
+Loan
+Amount
+−0.01
+1
+0.12
+0.29
+0.05
+0.04
+−0.01
+0.16
+−0.01
+−0.01
+−0.06
+0.19
+0.07
+Length of
+Employment
+0.00
+0.12
+1
+0.09
+−0.09
+0.07
+0.04
+0.25
+0.00
+0.06
+0.04
+0.08
+0.05
+Annual
+Income
+−0.05
+0.29
+0.09
+1
+0.00
+−0.15
+0.04
+0.17
+0.05
+0.03
+−0.01
+0.14
+0.00
+Number of
+Characters
+−0.01
+0.05
+−0.09
+0.00
+1
+−0.05
+−0.02
+−0.01
+0.00
+−0.03
+0.01
+−0.02
+−0.04
+Debt-to-
+Income
+0.06
+0.04
+0.07
+−0.15
+−0.05
+1
+0.01
+0.03
+0.00
+0.02
+−0.02
+0.33
+0.28
+Delinquency in
+Past 2 Years
+0.01
+−0.01
+0.04
+0.04
+−0.02
+0.01
+1
+0.09
+0.01
+−0.01
+−0.01
+0.06
+0.00
+Length of
+Credit History
+−0.04
+0.16
+0.25
+0.17
+−0.01
+0.03
+0.09
+1
+0.01
+0.11
+0.05
+0.17
+−0.04
+Inquiries in
+Past 6 Months
+0.06
+−0.01
+0.00
+0.05
+0.00
+0.00
+0.01
+0.01
+1
+0.02
+0.03
+0.10
+−0.09
+Months since
+Last Deliquency
+0.01
+−0.01
+0.06
+0.03
+−0.03
+0.02
+−0.01
+0.11
+0.02
+1
+0.02
+0.07
+0.05
+Months since
+Last Record
+0.02
+−0.06
+0.04
+−0.01
+0.01
+−0.02
+−0.01
+0.05
+0.03
+0.02
+1
+−0.01
+0.01
+Open
+Credit Lines
+0.00
+0.19
+0.08
+0.14
+−0.02
+0.33
+0.06
+0.17
+0.10
+0.07
+−0.01
+1
+−0.06
+Revolving Credit
+Utilization
+0.08
+0.07
+0.05
+0.00
+−0.04
+0.28
+0.00
+−0.04
+−0.09
+0.05
+0.01
+−0.06
+1
+
+Games 2018, 9, 82
+15 of 17
+Table A3. Overall Descriptive Statistics.
+Variable / Statistic
+N
+Mean
+St. Dev.
+Min
+Median
+Max
+Default
+70,673
+0.125
+0.330
+0.000
+0.000
+1.000
+Loan Amount
+70,673
+10,888
+6878
+1000
+10,000
+35,000
+Length of Employment
+68,135
+5.0
+3.5
+0.0
+5.0
+10.0
+Annual Income
+70,673
+67,154
+61,531
+4000
+57,000
+7,141,778
+Number of Characters
+70,673
+167
+281
+0
+71
+3853
+Debt-to-Income
+70,673
+0.151
+0.074
+0.000
+0.149
+0.349
+Delinquency in Past 2 Years
+70,673
+0.176
+0.581
+0.000
+0.000
+18.000
+Length of Credit History
+70,673
+17.63
+6.85
+6.00
+16.00
+69.00
+Inquiries in last 6 Months
+70,673
+0.812
+1.013
+0.000
+0.000
+8.000
+Months since Last Deliquency
+70,673
+14.07
+22.24
+0.00
+0.00
+152.00
+Months since Last Record
+70,673
+3.31
+17.63
+0.00
+0.00
+119.00
+Open Credit Lines
+70,673
+9.96
+4.44
+1.00
+9.00
+49.00
+Revolving Credit Utilization
+70,591
+0.537
+0.263
+0.000
+0.563
+1.044
+Table A4. Mean Comparison Table.
+Mean of
+All Classes
+Low-Risk Class
+Medium-Risk Class
+Risk Class
+High-Risk Class
+Default
+Non-Default
+Default
+Non-Default
+Default
+Non-Default
+Default
+Non-Default
+Default
+Non-Default
+Annual Income
+58,507
+67,870
+55,842
+69,301
+56,946
+65,961
+56,843
+65,698
+64,720
+73,363
+Employment Length
+5.27
+5.29
+5.29
+5.32
+5.36
+5.34
+5.19
+5.20
+5.23
+5.23
+Loan Amount
+10,798
+10,900
+9295
+10,017
+10,289
+10,720
+10,315
+10,820
+13,172
+13,624
+Number of Characters
+157
+169
+148
+170
+138
+163
+159
+162
+189
+190
+Debt-to-Income
+0.163
+0.150
+0.151
+0.134
+0.164
+0.157
+0.168
+0.158
+0.161
+0.155
+Deliquency in Past 2 Years
+0.198
+0.173
+0.080
+0.060
+0.155
+0.167
+0.224
+0.262
+0.309
+0.313
+Lenght of Credit History
+16.99
+17.72
+18.69
+19.04
+17.15
+17.44
+16.59
+16.82
+16.10
+16.83
+Inquiries in Last 6 Months
+0.977
+0.788
+0.783
+0.635
+0.816
+0.694
+1.207
+1.088
+1.063
+0.941
+Months since Last Deliquency
+14.66
+13.99
+7.68
+7.78
+13.56
+14.97
+16.90
+18.07
+18.14
+19.37
+Months since Last Record
+4.48
+3.15
+1.80
+1.31
+4.34
+3.59
+5.73
+4.64
+4.90
+3.87
+Open Credit Lines
+9.97
+9.96
+9.68
+9.83
+9.80
+9.89
+10.13
+10.08
+10.22
+10.27
+Revolving Credit Utilization
+0.591
+0.529
+0.387
+0.342
+0.566
+0.561
+0.637
+0.636
+0.707
+0.708
+
+Games 2018, 9, 82
+16 of 17
+Table A5. Loan Purposes.
+Loan Purpose
+All Classes
+Low-Risk Class
+Medium-Risk Class
+Risk Class
+High-Risk Class
+Default Rate
+% (#) of Loans
+Default Rate
+% (#) of Loans
+Default Rate
+% (#) of Loans
+Default Rate
+% (#) of Loans
+Default Rate
+% (#) of Loans
+Car
+9.16%
+2.37% (1 671)
+6.05%
+4.29% (860)
+10.92%
+1.86% (476)
+14.55%
+1.46% (220)
+14.78%
+1.16% (115)
+Credit Card
+10.10%
+18.28% (12 900)
+5.33%
+16.58% (3 321)
+9.39%
+20.45% (5 220)
+13.88%
+18.76% (2 832)
+15.91%
+15.38% (1 527)
+Debt Consolidation
+13.14%
+51.94% (36 659)
+6.56%
+43.98% (8 809)
+12.05%
+53.69% (13 706)
+16.93%
+55.85% (8 430)
+20.34%
+57.56% (5 714)
+Education
+14.88%
+0.34% (242)
+4.62%
+0.32% (65)
+18.18%
+0.30% (77)
+13.04%
+0.46% (69)
+32.26%
+0.31% (31)
+Home Improvement
+10.16%
+6.04% (4 263)
+5.08%
+8.84% (1 771)
+10.83%
+5.35% (1 367)
+17.45%
+4.78% (722)
+17.12%
+4.06% (403)
+House
+13.90%
+0.78% (554)
+6.98%
+1.07% (215)
+13.26%
+0.71% (181)
+20.88%
+0.60% (91)
+28.36%
+0.67% (67)
+Major Purchase
+8.43%
+3.95% (2 789)
+4.46%
+6.38% (1 277)
+8.71%
+3.19% (815)
+13.00%
+2.96% (446)
+19.52%
+2.53% (251)
+Medical
+14.91%
+1.53% (1 080)
+7.77%
+1.93% (386)
+17.22%
+1.30% (331)
+18.58%
+1.50% (226)
+23.36%
+1.38% (137)
+Moving
+15.63%
+1.18% (832)
+10.11%
+1.33% (267)
+17.97%
+1.16% (295)
+14.74%
+1.03% (156)
+23.68%
+1.15% (114)
+Other
+14.48%
+7.46% (5 263)
+8.61%
+8.35% (1 672)
+13.78%
+6.79% (1 734)
+18.88%
+6.98% (1 054)
+22.42%
+8.09% (803)
+Renewable Energy
+20.86%
+0.20% (139)
+14.89%
+0.23% (47)
+24.49%
+0.19% (49)
+20.83%
+0.16% (24)
+26.32%
+0.19% (19)
+Small Business
+20.74%
+3.13% (2 208)
+12.94%
+3.43% (688)
+20.44%
+2.47% (631)
+24.63%
+2.66% (402)
+28.95%
+4.91% (487)
+Vacation
+14.26%
+0.90% (638)
+13.27%
+1.13% (226)
+13.36%
+0.85% (217)
+17.19%
+0.85% (128)
+14.93%
+0.67% (67)
+Wedding
+9.92%
+1.90% (1 341)
+5.15%
+2.13% (427)
+10.72%
+1.68% (429)
+12.97%
+1.94% (293)
+14.06%
+1.93% (192)
+Total
+12.50%
+100% (70 579)
+6.59%
+100% (20 031)
+11.81%
+100% (25 528)
+16.51%
+100% (15 093)
+20.06%
+100% (9 927)
+Table A6. Home Situations.
+Home Situation
+All Classses
+Low-Risk Class
+Medium-Risk Class
+Risk Class
+High-Risk Class
+Default Rate
+% (#) of Loans
+Default Rate
+% (#) of Loans
+Default Rate
+% (#) of Loans
+Default Rate
+% (#) of Loans
+Default Rate
+% (#) of Loans
+Mortgage
+10.79%
+42.86% (30 248)
+5.50%
+51.42% (10 299)
+10.64%
+41.59% (10 617)
+15.29%
+37.55% (5 667)
+19.08%
+36.92% (3 665)
+No information
+17.14%
+0.05% (35)
+0.00%
+0.02% (5)
+33.33%
+0.05% (12)
+11.11%
+0.06% (9)
+11.11%
+0.09% (9)
+Other
+20.00%
+0.16% (110)
+12.50%
+0.08% (16)
+23.08%
+0.15% (39)
+10.00%
+0.20% (30)
+32.00%
+0.25% (25)
+Own
+13.28%
+8.14% (5 746)
+7.40%
+8.23% (1 648)
+12.03%
+8.13% (2 076)
+17.42%
+8.08% (1 220)
+22.43%
+8.08% (802)
+Rent
+13.84%
+48.80% (34 440)
+7.81%
+40.25% (8 063)
+12.69%
+50.08% (12 784)
+17.25%
+54.11% (8 167)
+20.38%
+54.66% (5 426)
+Total
+12.50%
+100% (70 579)
+6.59%
+100% (20 031)
+11.81%
+100% (25 528)
+16.51%
+100% (15 093)
+20.09%
+100% (9 927)
+
+Games 2018, 9, 82
+17 of 17

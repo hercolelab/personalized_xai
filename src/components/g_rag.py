@@ -137,12 +137,22 @@ class RAGRetriever:
                 name=self.collection_name,
                 embedding_function=self.embedding_fn,
             )
-            print(
-                f" [RAG] Loaded existing collection with {self.collection.count()} chunks"
-            )
-            return
+            chunk_count = self.collection.count()
+            if self.debug:
+                print(
+                    f" [RAG] Loaded existing collection with {chunk_count} chunks"
+                )
+            # If collection exists but is empty, delete and recreate it
+            if chunk_count == 0:
+                if self.debug:
+                    print(f" [RAG] Collection is empty, deleting and recreating...")
+                self._delete_existing_collection()
+                # Fall through to create new collection below
+            else:
+                return
 
-        print(f" [RAG] Creating new collection: {self.collection_name}")
+        if self.debug:
+            print(f" [RAG] Creating new collection: {self.collection_name}")
         self.collection = self.chroma_client.get_or_create_collection(
             name=self.collection_name,
             embedding_function=self.embedding_fn,
@@ -156,7 +166,8 @@ class RAGRetriever:
 
         try:
             self.chroma_client.delete_collection(self.collection_name)
-            print(f" [RAG] Deleted existing collection: {self.collection_name}")
+            if self.debug:
+                print(f" [RAG] Deleted existing collection: {self.collection_name}")
         except NotFoundError:
             # Collection doesn't exist: safe to ignore.
             return
@@ -179,7 +190,8 @@ class RAGRetriever:
             print(f" [RAG] Warning: No JSON files found in {self.kb_path}")
             return
 
-        print(f" [RAG] Indexing knowledge base from {len(json_files)} file(s)...")
+        if self.debug:
+            print(f" [RAG] Indexing knowledge base from {len(json_files)} file(s)...")
         index_records = self._build_index_records(json_files)
 
         if not index_records:
@@ -194,9 +206,11 @@ class RAGRetriever:
                 documents=index_records["texts"][i:end_idx],
                 metadatas=index_records["metadatas"][i:end_idx],
             )
-            print(f" [RAG] Indexed {end_idx}/{len(index_records['ids'])} chunks...")
+            if self.debug:
+                print(f" [RAG] Indexed {end_idx}/{len(index_records['ids'])} chunks...")
 
-        print(f" [RAG] Successfully indexed {len(index_records['ids'])} chunks")
+        if self.debug:
+            print(f" [RAG] Successfully indexed {len(index_records['ids'])} chunks")
 
     def _build_index_records(self, json_files: List[Path]) -> Dict[str, List[Any]]:
         ids = []

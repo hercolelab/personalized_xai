@@ -12,13 +12,19 @@ class NarrativeRefiner:
         self,
         model_name="gpt-oss:20b-cloud",
         config_path="src/config/config.yaml",
-        prompt_path="src/prompts/prompts.yaml",
+        prompt_path=None,
     ):
         self.model_name = model_name
         self.ollama = OllamaClient.from_model(self.model_name)
 
         with open(config_path, "r") as f:
             self.cfg = yaml.safe_load(f)
+
+        # Infer prompt_path from config_path if not provided
+        if prompt_path is None:
+            csv_path = self.cfg.get("data", {}).get("csv_path", "diabetes")
+            dataset_name = csv_path.split("/")[-1].replace("_cleaned.csv", "").replace(".csv", "")
+            prompt_path = f"src/prompts/prompts_{dataset_name}.yaml"
 
         with open(prompt_path, "r") as f:
             full_config = yaml.safe_load(f)

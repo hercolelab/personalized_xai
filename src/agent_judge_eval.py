@@ -15,10 +15,16 @@ class PersonaFeedbackAgent:
     def __init__(
         self,
         config_path="src/config/config.yaml",
-        prompt_path="src/prompts/prompts.yaml",
+        prompt_path=None,
     ):
         with open(config_path, "r") as f:
             self.cfg = yaml.safe_load(f)
+
+        # Infer prompt_path from config_path if not provided
+        if prompt_path is None:
+            csv_path = self.cfg.get("data", {}).get("csv_path", "diabetes")
+            dataset_name = csv_path.split("/")[-1].replace("_cleaned.csv", "").replace(".csv", "")
+            prompt_path = f"src/prompts/prompts_{dataset_name}.yaml"
 
         with open(prompt_path, "r") as f:
             prompts = yaml.safe_load(f)
@@ -67,10 +73,16 @@ class AgentJudgeEvaluator:
     def __init__(
         self,
         config_path="src/config/config.yaml",
-        prompt_path="src/prompts/prompts.yaml",
+        prompt_path=None,
     ):
         with open(config_path, "r") as f:
             self.cfg = yaml.safe_load(f)
+
+        # Infer prompt_path from config_path if not provided
+        if prompt_path is None:
+            csv_path = self.cfg.get("data", {}).get("csv_path", "diabetes")
+            dataset_name = csv_path.split("/")[-1].replace("_cleaned.csv", "").replace(".csv", "")
+            prompt_path = f"src/prompts/prompts_{dataset_name}.yaml"
 
         self.orchestrator = HumanInteractiveOrchestrator(config_path)
         self.feedback_agent = PersonaFeedbackAgent(config_path, prompt_path)

@@ -14,7 +14,7 @@ import re
 import requests
 from pathlib import Path
 from typing import List, Dict, Optional, Any, Tuple
-from transformers import AutoTokenizer
+import tiktoken
 from dotenv import load_dotenv
 
 # Load environment variables from .env if present (project root or current dir)
@@ -38,19 +38,83 @@ def load_text_from_file(txt_path: str) -> str:
         raise Exception(f"Error loading text from {txt_path}: {str(e)}")
 
 
+def find_sentence_boundaries(text: str) -> List[int]:
+    """
+    Find sentence boundary positions in text.
+    Sentence boundaries are defined as: . ! ? followed by whitespace or end of text.
+    
+    Args:
+        text: Input text
+        
+    Returns:
+        List of character positions where sentences end (exclusive, i.e., position after sentence end)
+    """
+    boundaries = [0]  # Start of text is always a boundary
+    # Pattern: sentence-ending punctuation followed by whitespace or end of string
+    pattern = r'[.!?]+(?:\s+|$)'
+    
+    for match in re.finditer(pattern, text):
+        # Position after the punctuation and whitespace
+        boundaries.append(match.end())
+    
+    # Always include the end of text as a boundary
+    if boundaries[-1] != len(text):
+        boundaries.append(len(text))
+    
+    return boundaries
+
+
+def find_next_sentence_start(text: str, pos: int, sentence_boundaries: List[int]) -> int:
+    """
+    Find the start of the next sentence from position pos.
+    The start is the position after a sentence boundary.
+    
+    Args:
+        text: Full text
+        pos: Current position
+        sentence_boundaries: List of sentence boundary positions
+        
+    Returns:
+        Character position of next sentence start
+    """
+    for boundary in sentence_boundaries:
+        if boundary > pos:
+            return boundary
+    return len(text)
+
+
+def find_previous_sentence_end(text: str, pos: int, sentence_boundaries: List[int]) -> int:
+    """
+    Find the end of the previous sentence before position pos.
+    
+    Args:
+        text: Full text
+        pos: Current position
+        sentence_boundaries: List of sentence boundary positions
+        
+    Returns:
+        Character position of previous sentence end
+    """
+    for boundary in reversed(sentence_boundaries):
+        if boundary <= pos:
+            return boundary
+    return 0
+
+
 def create_token_chunks(
     text: str,
-    tokenizer,
+    encoding,
     min_tokens: int = 300,
     max_tokens: int = 500,
     overlap_tokens: int = 50
 ) -> List[Dict[str, Any]]:
     """
     Create chunks of text based on token count with overlap.
+    Chunks are aligned to sentence boundaries to avoid truncating sentences.
     
     Args:
         text: Input text to chunk
-        tokenizer: Tokenizer instance for counting tokens
+        encoding: Tiktoken encoding instance for counting tokens
         min_tokens: Minimum tokens per chunk
         max_tokens: Maximum tokens per chunk
         overlap_tokens: Number of tokens to overlap between chunks
@@ -58,24 +122,90 @@ def create_token_chunks(
     Returns:
         List of chunk dictionaries with text and token_count
     """
-    # Tokenize the entire text
-    tokens = tokenizer.encode(text, add_special_tokens=False)
+    if not text.strip():
+        return []
+    
+    # Find sentence boundaries in the original text
+    sentence_boundaries = find_sentence_boundaries(text)
     
     chunks = []
-    start_idx = 0
+    start_char = 0
     chunk_index = 0
     
-    while start_idx < len(tokens):
-        # Determine chunk end (try to get max_tokens, but at least min_tokens)
-        end_idx = min(start_idx + max_tokens, len(tokens))
+    while start_char < len(text):
+        # Start from a sentence boundary
+        start_char = find_next_sentence_start(text, start_char, sentence_boundaries)
+        if start_char >= len(text):
+            break
         
-        # If we're near the end and have less than min_tokens, extend to end
-        if end_idx - start_idx < min_tokens and end_idx < len(tokens):
-            end_idx = min(start_idx + min_tokens, len(tokens))
+        # Find the target end position that gives us approximately max_tokens
+        # We'll search for a character position that yields close to max_tokens
+        low = start_char
+        high = len(text)
+        target_end_char = min(start_char + max_tokens * 4, len(text))  # Rough estimate: ~4 chars per token
         
-        # Extract chunk tokens and decode to text
-        chunk_tokens = tokens[start_idx:end_idx]
-        chunk_text = tokenizer.decode(chunk_tokens, skip_special_tokens=True)
+        # Refine the target position by checking token counts
+        for _ in range(10):  # Limit iterations
+            mid = (low + high) // 2
+            candidate_text = text[start_char:mid]
+            candidate_tokens = encoding.encode(candidate_text)
+            token_count = len(candidate_tokens)
+            
+            if token_count < max_tokens:
+                low = mid
+                target_end_char = mid
+            elif token_count > max_tokens:
+                high = mid
+            else:
+                target_end_char = mid
+                break
+        
+        # Now find the appropriate sentence boundary
+        # Priority: complete sentences, even if it means exceeding max_tokens
+        end_char = None
+        
+        # First, check if target_end_char is already at a sentence boundary
+        if target_end_char in sentence_boundaries:
+            end_char = target_end_char
+        else:
+            # Find the next sentence boundary after target_end_char to complete the sentence
+            for boundary in sentence_boundaries:
+                if boundary <= start_char:
+                    continue
+                if boundary < target_end_char:
+                    continue
+                # This is the next sentence boundary - use it to complete the sentence
+                end_char = boundary
+                break
+        
+        # If we still don't have an end_char, use the end of text
+        if end_char is None:
+            end_char = len(text)
+        
+        # Verify we have at least min_tokens, if not, extend forward
+        candidate_text = text[start_char:end_char]
+        candidate_tokens = encoding.encode(candidate_text)
+        if len(candidate_tokens) < min_tokens:
+            # Need to extend to get min_tokens - find next boundary that gives us min_tokens
+            for boundary in sentence_boundaries:
+                if boundary <= end_char:
+                    continue
+                candidate_text = text[start_char:boundary]
+                candidate_tokens = encoding.encode(candidate_text)
+                if len(candidate_tokens) >= min_tokens:
+                    end_char = boundary
+                    break
+        
+        # Extract the final chunk text
+        chunk_text = text[start_char:end_char].strip()
+        
+        if not chunk_text:
+            # If we got empty text, advance and try again
+            start_char = find_next_sentence_start(text, start_char + 1, sentence_boundaries)
+            continue
+        
+        # Get accurate token count
+        chunk_tokens = encoding.encode(chunk_text)
         token_count = len(chunk_tokens)
         
         chunks.append({
@@ -87,9 +217,21 @@ def create_token_chunks(
         chunk_index += 1
         
         # Move start position with overlap
-        if end_idx >= len(tokens):
+        # Calculate how many characters to go back for overlap
+        if end_char >= len(text):
             break
-        start_idx = end_idx - overlap_tokens
+        
+        # Estimate character position for overlap
+        # We want to go back by approximately overlap_tokens worth of characters
+        if token_count > 0:
+            chars_per_token = len(chunk_text) / token_count
+            overlap_chars = int(overlap_tokens * chars_per_token)
+            new_start = max(start_char + 1, end_char - overlap_chars)
+        else:
+            new_start = start_char + 1
+        
+        # Ensure we don't go backwards
+        start_char = max(start_char + 1, new_start)
     
     return chunks
 
@@ -189,86 +331,18 @@ def filter_chunk_with_llm(
         return (False, error_msg)
 
 
-def process_txt_files(
-    dataset_name: str,
-    model_name: str = "gpt-oss:20b-cloud",
-    num_chunks: Optional[int] = None,
-    min_tokens: int = 300,
-    max_tokens: int = 500,
-    overlap_tokens: int = 50,
-    tokenizer_model: Optional[str] = None
-):
+def get_prompt_template(dataset_name: str) -> str:
     """
-    Main processing function.
+    Generate a dataset-specific prompt template for filtering chunks.
     
     Args:
-        dataset_name: Name of the dataset (e.g., 'diabetes')
-        model_name: Ollama model name (e.g., 'llama3', 'mistral')
-        num_chunks: Optional limit on number of chunks per document (for debugging)
-        min_tokens: Minimum tokens per chunk
-        max_tokens: Maximum tokens per chunk
-        overlap_tokens: Number of tokens to overlap between chunks
-        tokenizer_model: Optional tokenizer model name (if different from model_name)
+        dataset_name: Name of the dataset (e.g., 'diabetes', 'lendingclub')
+        
+    Returns:
+        Prompt template string with {chunk_text} placeholder
     """
-    # Get paths
-    main_dir = Path(__file__).parent.parent.parent
-    docs_dir = main_dir / "data" / "docs" / dataset_name
-    output_dir = main_dir / "data" / "kb" / dataset_name
-    per_doc_dir = output_dir / "per_doc"
-    
-    # Check if docs directory exists
-    if not docs_dir.exists():
-        raise FileNotFoundError(f"Document directory not found: {docs_dir}")
-    
-    # Create output directories if they don't exist
-    output_dir.mkdir(parents=True, exist_ok=True)
-    per_doc_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Get all text files
-    txt_files = list(docs_dir.glob("*.txt"))
-    if not txt_files:
-        print(f"No text files found in {docs_dir}")
-        return
-    
-    print(f"Found {len(txt_files)} text file(s) to process")
-    
-    # Initialize tokenizer for text chunking
-    # Note: This tokenizer is only used for chunking, not for Ollama inference
-    # Using gpt2 as default since it's publicly available and works well for token counting
-    tokenizer_model_name = tokenizer_model or "gpt2"
-    print(f"Loading tokenizer for chunking: {tokenizer_model_name}...")
-    try:
-        tokenizer = AutoTokenizer.from_pretrained(tokenizer_model_name, trust_remote_code=True)
-        print(f"  Successfully loaded tokenizer: {tokenizer_model_name}")
-    except Exception as e:
-        print(f"  Warning: Could not load tokenizer {tokenizer_model_name}: {str(e)}")
-        print("  Falling back to gpt2 tokenizer...")
-        try:
-            tokenizer = AutoTokenizer.from_pretrained("gpt2")
-            print("  Successfully loaded gpt2 tokenizer")
-        except Exception as e2:
-            raise Exception(f"Failed to load tokenizer (both {tokenizer_model_name} and gpt2 failed): {str(e2)}")
-    
-    # Determine if using cloud model and set API URL accordingly
-    is_cloud_model = '-cloud' in model_name or ':cloud' in model_name
-    if is_cloud_model:
-        api_url = "https://ollama.com/api/generate"
-        # Get API key from environment variable
-        api_key = os.getenv('OLLAMA_API_KEY')
-        if not api_key:
-            print("[Warning] OLLAMA_API_KEY not set. Cloud models require authentication.")
-            print("[Info] Set OLLAMA_API_KEY environment variable or run 'ollama signin'")
-    else:
-        api_url = "http://localhost:11434/api/generate"
-        api_key = None
-    
-    print(f"Using Ollama API: {api_url}")
-    if is_cloud_model:
-        print(f"Model: {model_name} (cloud model)")
-    else:
-        print(f"Model: {model_name} (local model)")
-    
-    prompt_template = """You are an expert evaluator for an Explainable AI (XAI) system focused on Diabetes prediction. 
+    if dataset_name.lower() == "diabetes":
+        return """You are an expert evaluator for an Explainable AI (XAI) system focused on Diabetes prediction. 
     Your task is to determine if the following text chunk contains specific "grounding information" necessary to translate technical data (like SHAP values or Counterfactuals) into human-centered narratives.
 
     # RUBRIC FOR POSITIVE ANSWER
@@ -298,6 +372,167 @@ def process_txt_files(
     }}
     """
     
+    elif dataset_name.lower() == "lendingclub":
+        return """You are an expert evaluator for an Explainable AI (XAI) system focused on Loan Default prediction. 
+    Your task is to determine if the following text chunk contains specific "grounding information" necessary to translate technical data (like SHAP values or Counterfactuals) into human-centered narratives.
+
+    # RUBRIC FOR POSITIVE ANSWER
+    To answer "Yes", the text must contain at least one of the following regarding loan risk factors:
+
+    The relevant features to search for are:
+    - Loan amount (loan_amnt): The amount of money requested/borrowed
+    - Duration of repayment period (term): The loan term length (e.g., 36 months, 60 months)
+    - Debt-To-Income ratio (dti): Ratio of monthly debt payments to monthly income
+    - Revolving line utilization rate (revol_util): Percentage of available credit being used
+    - Annual Income (annual_inc): Yearly income of the borrower
+    - FICO credit score (fico): Credit score (fico_high, fico_low, or average)
+    - Public record bankruptcies (pub_rec_bankruptcies): Number of bankruptcies on public record
+    - Employment length years (emp_length): Years of employment
+    - Number of credit inquiries in the past 6 months (inq_last_6mths): Recent credit inquiries
+    - Home ownership (home_ownership): Ownership status (own, rent, mortgage, etc.)
+    - Purpose (purpose): Loan purpose (debt consolidation, credit card, etc.)
+    - Open accounts (open_acc): Number of open credit accounts
+
+    For each relevant feature found, the text should provide at least one of:
+    1. **Feature Meaning:** Definitions or simple explanations of what the feature means.
+    2. **Risk Impact:** Explanations of *how* or *why* a specific feature increases or decreases loan default risk (mechanism).
+    3. **Actionable Advice:** Suggestions on how a borrower might modify this feature (e.g., reduce debt, improve credit score) to improve their loan approval chances.
+    4. **Contextual Values:** Information about normal ranges, thresholds, or what constitutes a "high" or "low" value (crucial for explaining counterfactual changes).
+
+    # RUBRIC FOR NEGATIVE ANSWER
+    If the text is generic, unrelated to loan/credit features, or purely structural (like references or formatting), the answer is "No".
+
+    Chunk: {chunk_text}
+
+    # THINKING PROCESS
+    Think through your reasoning step by step:
+    1. Identify any specific loan/credit features mentioned in the text (from the list above).
+    2. Check if the text provides definitions, causal impacts, actionable advice, or value ranges for those features.
+    3. Determine if this information would help a non-expert understand *why* their loan application was rejected/accepted or *how* to improve their chances.
+
+    # OUTPUT FORMAT
+    Provide your final answer in the exact format specified: 
+    {{
+        "reasoning": "<your reasoning process here>",
+        "final_answer": "<Yes/No>"
+    }}
+    """
+    
+    else:
+        # Generic template for unknown datasets
+        return """You are an expert evaluator for an Explainable AI (XAI) system. 
+    Your task is to determine if the following text chunk contains specific "grounding information" necessary to translate technical data (like SHAP values or Counterfactuals) into human-centered narratives.
+
+    # RUBRIC FOR POSITIVE ANSWER
+    To answer "Yes", the text must contain at least one of the following:
+
+    1. **Feature Meaning:** Definitions or simple explanations of what a feature is.
+    2. **Risk Impact:** Explanations of *how* or *why* a specific feature increases or decreases risk (mechanism).
+    3. **Actionable Advice:** Suggestions on how a user might modify this feature to improve outcomes.
+    4. **Contextual Values:** Information about normal ranges, thresholds, or what constitutes a "high" or "low" value (crucial for explaining counterfactual changes).
+
+    # RUBRIC FOR NEGATIVE ANSWER
+    If the text is generic, unrelated to relevant features, or purely structural (like references or formatting), the answer is "No".
+
+    Chunk: {chunk_text}
+
+    # THINKING PROCESS
+    Think through your reasoning step by step:
+    1. Identify any specific features mentioned in the text.
+    2. Check if the text provides definitions, causal impacts, actionable advice, or value ranges for those features.
+    3. Determine if this information would help a non-expert understand *why* their outcome occurred or *how* to change it.
+
+    # OUTPUT FORMAT
+    Provide your final answer in the exact format specified: 
+    {{
+        "reasoning": "<your reasoning process here>",
+        "final_answer": "<Yes/No>"
+    }}
+    """
+
+
+def process_txt_files(
+    dataset_name: str,
+    model_name: str = "gpt-oss:20b-cloud",
+    num_chunks: Optional[int] = None,
+    min_tokens: int = 300,
+    max_tokens: int = 500,
+    overlap_tokens: int = 50,
+    tokenizer_model: Optional[str] = None
+):
+    """
+    Main processing function.
+    
+    Args:
+        dataset_name: Name of the dataset (e.g., 'diabetes')
+        model_name: Ollama model name (e.g., 'llama3', 'mistral')
+        num_chunks: Optional limit on number of chunks per document (for debugging)
+        min_tokens: Minimum tokens per chunk
+        max_tokens: Maximum tokens per chunk
+        overlap_tokens: Number of tokens to overlap between chunks
+        tokenizer_model: Optional encoding name for tiktoken (default: cl100k_base)
+    """
+    # Get paths
+    main_dir = Path(__file__).parent.parent.parent
+    docs_dir = main_dir / "data" / "docs" / dataset_name
+    output_dir = main_dir / "data" / "kb" / dataset_name
+    per_doc_dir = output_dir / "per_doc"
+    
+    # Check if docs directory exists
+    if not docs_dir.exists():
+        raise FileNotFoundError(f"Document directory not found: {docs_dir}")
+    
+    # Create output directories if they don't exist
+    output_dir.mkdir(parents=True, exist_ok=True)
+    per_doc_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Get all text files
+    txt_files = list(docs_dir.glob("*.txt"))
+    if not txt_files:
+        print(f"No text files found in {docs_dir}")
+        return
+    
+    print(f"Found {len(txt_files)} text file(s) to process")
+    
+    # Initialize encoding for text chunking
+    # Note: This encoding is only used for chunking, not for Ollama inference
+    # Using tiktoken (cl100k_base) which has no max length limit and works well for token counting
+    encoding_name = tokenizer_model or "cl100k_base"
+    print(f"Loading tiktoken encoding for chunking: {encoding_name}...")
+    try:
+        encoding = tiktoken.get_encoding(encoding_name)
+        print(f"  Successfully loaded encoding: {encoding_name}")
+    except Exception as e:
+        print(f"  Warning: Could not load encoding {encoding_name}: {str(e)}")
+        print("  Falling back to cl100k_base encoding...")
+        try:
+            encoding = tiktoken.get_encoding("cl100k_base")
+            print("  Successfully loaded cl100k_base encoding")
+        except Exception as e2:
+            raise Exception(f"Failed to load encoding (both {encoding_name} and cl100k_base failed): {str(e2)}")
+    
+    # Determine if using cloud model and set API URL accordingly
+    is_cloud_model = '-cloud' in model_name or ':cloud' in model_name
+    if is_cloud_model:
+        api_url = "https://ollama.com/api/generate"
+        # Get API key from environment variable
+        api_key = os.getenv('OLLAMA_API_KEY')
+        if not api_key:
+            print("[Warning] OLLAMA_API_KEY not set. Cloud models require authentication.")
+            print("[Info] Set OLLAMA_API_KEY environment variable or run 'ollama signin'")
+    else:
+        api_url = "http://localhost:11434/api/generate"
+        api_key = None
+    
+    print(f"Using Ollama API: {api_url}")
+    if is_cloud_model:
+        print(f"Model: {model_name} (cloud model)")
+    else:
+        print(f"Model: {model_name} (local model)")
+    
+    # Generate dataset-specific prompt template
+    prompt_template = get_prompt_template(dataset_name)
+    
     # Process each text file
     total_chunks_processed = 0
     total_chunks_useful = 0
@@ -319,7 +554,7 @@ def process_txt_files(
             # Create chunks
             print("  Creating chunks...")
             chunks = create_token_chunks(
-                text, tokenizer, min_tokens, max_tokens, overlap_tokens
+                text, encoding, min_tokens, max_tokens, overlap_tokens
             )
             
             print(f"  Created {len(chunks)} chunks")
@@ -423,7 +658,7 @@ def main():
         '--tokenizer-model',
         type=str,
         default=None,
-        help='Tokenizer model name for chunking (default: gpt2)'
+        help='Tiktoken encoding name for chunking (default: cl100k_base). Options: cl100k_base, p50k_base, r50k_base'
     )
     parser.add_argument(
         '--min-tokens',

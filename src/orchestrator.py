@@ -27,6 +27,15 @@ def _infer_dataset_name(cfg):
     return csv_path.split("/")[-1].replace("_cleaned.csv", "").replace(".csv", "")
 
 
+def _get_prompt_path(config_path):
+    """Get the dataset-specific prompt file path based on config."""
+    import yaml
+    with open(config_path, "r") as f:
+        cfg = yaml.safe_load(f)
+    dataset_name = _infer_dataset_name(cfg)
+    return f"src/prompts/prompts_{dataset_name}.yaml"
+
+
 class XAI_Orchestrator:
     def __init__(self, config_path="src/config/config.yaml"):
         with open(config_path, "r") as f:
@@ -68,17 +77,22 @@ class XAI_Orchestrator:
                 print(colored(f"  [RAG] Failed to initialize: {e}", "yellow"))
                 self.rag = None
 
+        prompt_path = _get_prompt_path(config_path)
         self.narrator = NarrativeGenerator(
             model_name=self.cfg["verifier"].get("llm_judge_model", "llama3.1:8b"),
+            config_path=config_path,
+            prompt_path=prompt_path,
             rag_retriever=self.rag,
         )
-        self.verifier = XAIVerifier(config_path)
+        self.verifier = XAIVerifier(config_path, prompt_path=prompt_path)
 
         # Initialize refiner if enabled
         self.refiner_enabled = self.cfg.get("refiner", {}).get("enabled", True)
         if self.refiner_enabled:
             self.refiner = NarrativeRefiner(
-                model_name=self.cfg["verifier"].get("llm_judge_model", "llama3.1:8b")
+                model_name=self.cfg["verifier"].get("llm_judge_model", "llama3.1:8b"),
+                config_path=config_path,
+                prompt_path=prompt_path,
             )
 
         self.max_retries = self.cfg.get("orchestrator", {}).get("max_retries", 5)
@@ -263,17 +277,22 @@ class HumanInteractiveOrchestrator:
                 print(colored(f"  [RAG] Failed to initialize: {e}", "yellow"))
                 self.rag = None
 
+        prompt_path = _get_prompt_path(config_path)
         self.narrator = NarrativeGenerator(
             model_name=self.cfg["verifier"].get("llm_judge_model", "llama3.1:8b"),
+            config_path=config_path,
+            prompt_path=prompt_path,
             rag_retriever=self.rag,
         )
-        self.verifier = XAIVerifier(config_path)
-        self.feedback_translator = FeedbackTranslator(config_path)
+        self.verifier = XAIVerifier(config_path, prompt_path=prompt_path)
+        self.feedback_translator = FeedbackTranslator(config_path, prompt_path=prompt_path)
 
         self.refiner_enabled = self.cfg.get("refiner", {}).get("enabled", True)
         if self.refiner_enabled:
             self.refiner = NarrativeRefiner(
-                model_name=self.cfg["verifier"].get("llm_judge_model", "llama3.1:8b")
+                model_name=self.cfg["verifier"].get("llm_judge_model", "llama3.1:8b"),
+                config_path=config_path,
+                prompt_path=prompt_path,
             )
 
         self.max_retries = self.cfg.get("orchestrator", {}).get("max_retries", 5)
@@ -463,10 +482,55 @@ def main():
         default=None,
         help="Index of instance to explain. Default is highest-risk case.",
     )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        choices=["diabetes", "lendingclub"],
+        required=True,
+        help="Dataset to use: 'diabetes' or 'lendingclub'.",
+    )
+    parser.add_argument(
+        "--role",
+        type=str,
+        default=None,
+        help="Persona role to use. If not provided, defaults to 'test'.",
+    )
     args = parser.parse_args()
 
-    # Load settings
-    config_file = "src/config/config.yaml"
+    # Load settings based on dataset
+    if args.dataset == "diabetes":
+        config_file = "src/config/config_diabetes.yaml"
+    elif args.dataset == "lendingclub":
+        config_file = "src/config/config_lendingclub.yaml"
+    else:
+        config_file = "src/config/config.yaml"  # fallback
+    
+    # Load config to get personas
+    with open(config_file, "r") as f:
+        cfg = yaml.safe_load(f)
+    
+    # Get available personas from config
+    available_personas = list(cfg.get("personas", {}).keys())
+    if not available_personas:
+        raise ValueError(f"No personas defined in config file: {config_file}")
+    
+    # Determine role to use
+    if args.role:
+        # Validate provided role against available personas
+        if args.role not in available_personas:
+            raise ValueError(
+                f"Invalid role '{args.role}'. Available personas: {', '.join(available_personas)}"
+            )
+        role = args.role
+    else:
+        # Default to "test" role
+        role = "test"
+        if role not in available_personas:
+            raise ValueError(
+                f"Default role 'test' is not defined in config file: {config_file}. "
+                f"Available personas: {', '.join(available_personas)}"
+            )
+    
     if args.interactive:
         orchestrator = HumanInteractiveOrchestrator(config_file)
     else:
@@ -484,7 +548,7 @@ def main():
     if args.interactive:
         results = orchestrator.run_interactive(instance_idx)
     else:
-        results = orchestrator.run("test", instance_idx)
+        results = orchestrator.run(role, instance_idx)
 
     # FINAL OUTPUT
     if results["status"] == "success":
