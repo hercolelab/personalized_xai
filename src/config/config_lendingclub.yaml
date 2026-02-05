@@ -48,7 +48,7 @@ verifier:
   verifier_rubric:
     technicality:
       levels:
-        0.2: "Accessible: Uses plain language to explain financial concepts. Numbers are allowed, but focus is on simple approval chances, avoiding complex banking jargon. SHAP values not mentioned."
+        0.2: "Accessible: Uses plain language to explain financial concepts. DO NOT use ANY numbers. Must communicate direction of changes with verbs (e.g., increases, decreases). Focus is on simple approval chances, avoiding complex banking jargon. SHAP values not mentioned."
         0.5: "Balanced: Uses specific dollar amounts and rates, but avoids heavy statistical breakdowns. SHAP values not mentioned."
         0.8: "Technical: Professional underwriter report style. Uses exact risk coefficients, specific credit terminology, and discusses precise statistical impacts (SHAP values should be mentioned)."
     verbosity:

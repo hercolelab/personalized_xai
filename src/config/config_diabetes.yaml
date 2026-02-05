@@ -46,7 +46,7 @@ verifier:
   verifier_rubric:
     technicality:
       levels:
-        0.2: "Accessible: Uses plain language to explain concepts. Numbers are allowed, but the focus is on simple explanations, avoiding complex jargon. SHAP values should not be mentioned in the narrative."
+        0.2: "Accessible: Uses plain language to explain financial concepts. DO NOT use ANY numbers. Must communicate direction of changes with verbs (e.g., increases, decreases). Focus is on simple approval chances, avoiding complex banking jargon. SHAP values not mentioned."
         0.5: "Balanced: Uses specific measurements and some technical terms, but avoids heavy statistical breakdowns. SHAP values should not be mentioned in the narrative."
         0.8: "Technical: Professional clinical report style. Uses exact values, specific medical/statistical terminology, and discusses precise statistical impacts (SHAP values should be mentioned in the narrative)."
     verbosity:
@@ -80,7 +80,7 @@ rag:
   enabled: true
   embedding_model: "embeddinggemma" # Ollama embedding model
   top_k: 3 # Number of chunks to retrieve
-  min_similarity: 0.5
+  min_similarity: 0.45
   max_context_chars: 3000 # Cap for injected RAG context length
   max_context_chunks: 3 # Max number of chunks to include
   chromadb_path: "data/chromadb"

@@ -34,11 +34,18 @@ system_prompts:
       1.  Current Values: When mentioning a value from the user's original profile, wrap it as: `[V_START_FEATURE_NAME]value[/V_START_FEATURE_NAME]`
       2.  Target Values: When mentioning a suggested new value from the counterfactual, wrap it as: `[V_GOAL_FEATURE_NAME]value[/V_GOAL_FEATURE_NAME]`
       3.  SHAP Impacts: When mentioning a SHAP contribution value, wrap it as: `[I_FEATURE_NAME]value[/I_FEATURE_NAME]`
-
+      4.  Direction of Change: When technicality is low, you MUST explicitly highlight the direction of change using: `[D_FEATURE_NAME]direction[/D_FEATURE_NAME]`. Direction is the verb used in the narrative to describe the change. 
+          The tag must wrap ONLY the verb within a natural sentence. Write complete, flowing sentences where the verb describing the change is wrapped in the tag.
+          Example:
+           - "To improve your outcome, your glucose level should [D_Glucose]decrease[/D_Glucose] and your BMI [D_BMI]decrease[/D_BMI]."
+           - "By [D_Glucose]lowering[/D_Glucose] your glucose level and [D_BMI]reducing[/D_BMI] your BMI, you can improve your outcome."
+          This tag MUST be declared only once per feature in the narrative.
+          
       # CLINICAL GUARDRAILS
       - Static vs Dynamic: Only features in the 'target' dictionary are changeable. Treat all others as static context (NEVER suggest changing them)."
       - SHAP Integration: SHAP values can be used to support the description of the counterfactual explanation, but only if the style allows it. If a feature is not in the 'target' dictionary, DO NOT mention its SHAP value in the narrative.
       - SHAP Suppression: If perspective is high, technicality is low, or verbosity is low, DO NOT mention SHAP impact values.
+      - VALUES suppression: If technicality is low, do not mention the values of the features in the narrative, only the direction of change.
 
       # ADDITIONAL INSTRUCTIONS
       - Highlight the changes: Do not list the data input entirely, but rather highlight the changes and the impact of the changes.
@@ -57,8 +64,8 @@ system_prompts:
       style_features:
         technicality:
           low:
-            description: "Accessible communication. You may use specific numbers (wrapped in tags), but prioritize explaining technical concepts in plain, simple language avoiding jargon. DO NOT use SHAP values in the narrative."
-            example: "Your glucose level is 189, which is significantly high and serves as the main reason for the risk."
+            description: "Accessible communication. DO NOT use ANY numbers (even wrapped in tags). Write complete sentences where the verb describing the change is wrapped in the tag. Explain the situation (high, low, etc.) and the direction of changes naturally. Prioritize explaining technical concepts in plain, simple language avoiding jargon. DO NOT use SHAP values in the narrative."
+            example: "Your glucose level increases significantly, which serves as the main reason for the risk. To improve your outcome, you should work on ensuring your glucose level [D_GOAL_Glucose]decreases[/D_GOAL_Glucose] and your BMI [D_GOAL_BMI]reduces[/D_GOAL_BMI]."
           medium:
             description: "Balanced communication. Uses specific measurements and some technical terms, but avoids heavy statistical breakdowns. DO NOT use SHAP values in the narrative."
             example: "Your glucose level of 189 mg/dL is elevated and contributes significantly to your risk assessment."
@@ -232,14 +239,19 @@ system_prompts:
       1.  Current Values: When mentioning a value from the user's original profile, wrap it as: `[V_START_FEATURE_NAME]value[/V_START_FEATURE_NAME]`
       2.  Target Values: When mentioning a suggested new value from the counterfactual, wrap it as: `[V_GOAL_FEATURE_NAME]value[/V_GOAL_FEATURE_NAME]`
       3.  SHAP Impacts: When mentioning a SHAP contribution value, wrap it as: `[I_FEATURE_NAME]value[/I_FEATURE_NAME]`
+      4.  Direction of Change: When technicality is low, you MUST explicitly highlight the direction of change using: `[D_FEATURE_NAME]direction[/D_FEATURE_NAME]`. Direction is the verb used in the narrative to describe the change. 
+          The tag must wrap ONLY the verb within a natural sentence. Write complete, flowing sentences where the verb describing the change is wrapped in the tag.
+          Example:
+           - "To improve your outcome, your glucose level should [D_Glucose]decrease[/D_Glucose] and your BMI [D_BMI]decrease[/D_BMI]."
+           - "By [D_Glucose]lowering[/D_Glucose] your glucose level and [D_BMI]reducing[/D_BMI] your BMI, you can improve your outcome."
+          This tag MUST be declared only once per feature in the narrative.
 
       # REFINEMENT INSTRUCTIONS
       1. Fix ALL listed failures while maintaining the required style.
-      2. Ensure EVERY numerical value exactly matches the ground truth data.
+      2. Ensure EVERY numerical value exactly matches the ground truth data (except if technicality is low, then remove the number and keep the direction tag).
       3. Pay special attention to alignment failures - match the exact rubric level requirements shown above.
-      4. Keep the same tagging format for values ([V_START_...], [V_GOAL_...], [I_...]).
+      4. Keep the same tagging format for values ([V_START_...], [V_GOAL_...], [I_...], [D_...]). When using direction tags, integrate them naturally into sentences, wrapping only the verb.
       5. Only suggest changes for features that appear in the 'target' dictionary.
       6. Do NOT use the word "Counterfactual" - use "Suggested Changes" or "Recommended Changes" instead.
-      7. Do not remove too much information from the narrative; align it to the target style trying to maintain as much information as possible.
 
       Write the refined narrative now:

@@ -40,6 +40,7 @@ class XAIVerifier:
     def verify_faithfulness(self, narrative, ground_truth, style):
         """
         Ensures that whenever a value is mentioned in tags, it matches the XAI Backend output.
+        Also validates direction tags when technicality is low.
         Does not check presence of data; that is handled by completeness.
         """
         # Allow ASCII hyphen and Unicode minus/dash (U+2011 nbh, U+2013 en dash, U+2212 minus)
@@ -49,6 +50,8 @@ class XAIVerifier:
         )
         targ_regex = re.findall(rf"\[V_GOAL_(\w+)\]({_num})\[/V_GOAL_\w+\]", narrative)
         imp_regex = re.findall(rf"\[I_(\w+)\]({_num})\[/I_\w+\]", narrative)
+        # Extract direction tags: [D_FEATURE_NAME]direction[/D_FEATURE_NAME]
+        dir_regex = re.findall(rf"\[D_(\w+)\]([^\[]+)\[/D_\w+\]", narrative)
 
         def _norm(s):
             if not s:
@@ -61,6 +64,7 @@ class XAIVerifier:
             "current": {k.upper(): _norm(v) for k, v in curr_regex},
             "target": {k.upper(): _norm(v) for k, v in targ_regex},
             "impacts": {k.upper(): _norm(v) for k, v in imp_regex},
+            "directions": {k.upper(): v.strip() for k, v in dir_regex},
         }
 
         # Numerical Validation: every mentioned value must match ground truth
@@ -93,6 +97,24 @@ class XAIVerifier:
             if not ok:
                 return False, err
 
+        # Validate directions when technicality is low
+        technicality_low = style.get("technicality", 0.5) <= 0.33
+        if technicality_low:
+            # Validate all direction tags that are present
+            for feat, direction in extracted["directions"].items():
+                # Find matching feature in ground truth
+                match = next((k for k in ground_truth.get("target", {}) if k.upper() in feat), None)
+                if match:
+                    current_val = ground_truth.get("current", {}).get(match)
+                    target_val = ground_truth.get("target", {}).get(match)
+                    if current_val is not None and target_val is not None:
+                        # Validate direction using LLM
+                        is_valid, err = self._validate_direction(
+                            current_val, target_val, direction, feat
+                        )
+                        if not is_valid:
+                            return False, f"Direction validation failed for {feat}: {err}"
+
         return True, "Faithfulness Verified"
 
     # --- 2. COMPLETENESS VERIFICATION (All required data present) ---
@@ -112,19 +134,28 @@ class XAIVerifier:
 
         # Require only features that are actually in the counterfactual (target), not other top-SHAP features
         required_features = set(actual_changes)
-        if style["perspective"] >= 0.5:
-            mode_label = "Proactive (Changes only)"
-        else:
-            mode_label = "Retroactive (Changes + SHAP Drivers)"
+        
 
         missing = set()
+        technicality_low = style.get("technicality", 0.5) <= 0.33
+        
         for feat in required_features:
             feat_upper = feat.upper()
             valid_names = [feat_upper] + self.alias_map.get(feat_upper, [])
             pattern = "|".join([re.escape(n) for n in valid_names])
-            found = re.search(
-                rf"\[(V_START|V_GOAL|I)_({pattern})\]", narrative, re.IGNORECASE
-            ) or any(name.lower() in narrative.lower() for name in valid_names)
+            
+            # When technicality is low, we don't require V_START, but we require D_ tags
+            if technicality_low:
+                # Check for direction tag or feature mention
+                found = re.search(
+                    rf"\[D_({pattern})\]", narrative, re.IGNORECASE
+                ) or any(name.lower() in narrative.lower() for name in valid_names)
+            else:
+                # When technicality is not low, require V_START, V_GOAL, or I tags
+                found = re.search(
+                    rf"\[(V_START|V_GOAL|I)_({pattern})\]", narrative, re.IGNORECASE
+                ) or any(name.lower() in narrative.lower() for name in valid_names)
+            
             if not found:
                 missing.add(feat)
 
@@ -145,16 +176,26 @@ class XAIVerifier:
                 )
                 if not shap_present:
                     missing.add(feat)
-            if target_features:
-                mode_label = f"{mode_label}; SHAP required for target features"
+        
+        # When technicality is low, ensure direction tags are present for all changed features
+        if technicality_low:
+            for feat in required_features:
+                feat_upper = feat.upper()
+                valid_names = [feat_upper] + self.alias_map.get(feat_upper, [])
+                pattern = "|".join([re.escape(n) for n in valid_names])
+                direction_present = re.search(
+                        rf"\[D_({pattern})\]", narrative, re.IGNORECASE
+                )
+                if not direction_present:
+                    missing.add(f"{feat} (direction tag required)")
 
         if missing:
             return (
                 False,
-                f"Completeness Error [{mode_label}]: Missing data for {sorted(missing)}.",
+                f"Completeness Error: Missing data for {sorted(missing)}.",
             )
 
-        return True, f"Completeness Verified ({mode_label})"
+        return True, f"Completeness Verified"
 
     # --- 3. ALIGNMENT VERIFICATION (LLM-as-a-Judge) ---
     def verify_alignment(self, narrative, target_style_dict):
@@ -208,6 +249,41 @@ class XAIVerifier:
             }
         except Exception as e:
             return False, {"error": f"Judge failure: {str(e)}"}
+
+    def _validate_direction(self, initial_value, changed_value, direction, feature_name):
+        """
+        Validates that the direction verb correctly describes the change from initial to changed value.
+        Uses LLM similar to verify_alignment pattern.
+        Returns (is_valid, error_message)
+        """
+        try:
+            initial = float(initial_value)
+            changed = float(changed_value)
+            
+            validation_prompt = f"""You are a helpful assistant that validates whether a direction verb correctly describes a numerical change.
+
+                Given:
+                - Feature: {feature_name}
+                - Initial value: {initial}
+                - Changed value: {changed}
+                - Direction verb: "{direction}"
+
+                Task: Determine if the direction verb correctly describes the change from initial to changed value.
+
+                # OUTPUT FORMAT
+                Return ONLY a JSON object with this exact structure: {{"final_answer": "Yes"}} or {{"final_answer": "No"}}
+                No other text or comments."""
+
+            try:
+                res = self._query_llm(validation_prompt)
+                result = json.loads(re.search(r"\{.*\}", res, re.DOTALL).group())
+                if result.get("final_answer", "").lower() == "no":
+                    return False, f"Direction '{direction}' does not match change from {initial} to {changed}"
+                return True, ""
+            except Exception as e:
+                return False, f"Direction validation error: {str(e)}"
+        except (ValueError, TypeError) as e:
+            return False, f"Invalid values for direction validation: {str(e)}"
 
     def _query_llm(self, prompt):
         payload = {

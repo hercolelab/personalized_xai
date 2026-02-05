@@ -18,6 +18,8 @@ def clean_tags(text):
     """Removes all XAI tags for the final user-facing output."""
     text = re.sub(r"\[/?V_[^\]]+\]", "", text)
     text = re.sub(r"\[/?I_[^\]]+\]", "", text)
+    # Remove all D_ tags (direction tags: [D_FEATURE_NAME]...[/D_FEATURE_NAME] or [D_GOAL_FEATURE_NAME]...[/D_GOAL_FEATURE_NAME])
+    text = re.sub(r"\[/?D_[^\]]+\]", "", text)
     # return re.sub(r'\s+', ' ', text).strip()
     return text
 
