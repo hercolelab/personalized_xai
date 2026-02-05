@@ -39,9 +39,10 @@ def _get_prompt_path(config_path):
 
 
 class XAI_Orchestrator:
-    def __init__(self, config_path="src/config/config.yaml"):
+    def __init__(self, config_path="src/config/config.yaml", baseline=False):
         with open(config_path, "r") as f:
             self.cfg = yaml.safe_load(f)
+        self.baseline = baseline
 
         print(
             colored(
@@ -130,7 +131,33 @@ class XAI_Orchestrator:
             )
         )
 
-        # 3. REJECTION SAMPLING LOOP
+        # 3. REJECTION SAMPLING LOOP (or BASELINE: direct return)
+        if self.baseline:
+            print(
+                colored(
+                    "\n[Baseline Mode] Generating Narrative (skipping verification)...",
+                    "yellow",
+                )
+            )
+            candidate_narrative = self.narrator.generate(ground_truth, target_style)
+            
+            # PRINT CANDIDATE NARRATIVE
+            print(colored(f"-" * 15 + " CANDIDATE NARRATIVE " + "-" * 15, "yellow"))
+            print(candidate_narrative)
+            print(colored("-" * 51, "yellow"))
+            
+            # Optionally clean tags for final presentation
+            final_text = candidate_narrative
+            if self.cfg.get("orchestrator", {}).get("clean_tags_from_final", True):
+                final_text = clean_tags(candidate_narrative)
+            
+            return {
+                "status": "success",
+                "narrative": final_text,
+                "attempts": 1,
+                "style_report": None,
+            }
+        
         last_narrative = None
         last_failures: Optional[dict[str, Any]] = None
         for attempt in range(self.max_retries):
@@ -497,6 +524,11 @@ def main():
         default=None,
         help="Persona role to use. If not provided, defaults to 'test'.",
     )
+    parser.add_argument(
+        "--baseline",
+        action="store_true",
+        help="Skip verification and refinement, return first generated narrative directly.",
+    )
     args = parser.parse_args()
 
     # Load settings based on dataset
@@ -536,7 +568,7 @@ def main():
     if args.interactive:
         orchestrator = HumanInteractiveOrchestrator(config_file)
     else:
-        orchestrator = XAI_Orchestrator(config_file)
+        orchestrator = XAI_Orchestrator(config_file, baseline=args.baseline)
 
     # Pick the most interesting case (highest risk)
     with torch.no_grad():
