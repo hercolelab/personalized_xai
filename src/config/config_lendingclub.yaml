@@ -22,10 +22,10 @@ xai:
   
 
 personas:
-  applicant: [0.2, 0.8, 0.8, 0.5]   #Easy, Action-oriented
-  officer: [0.8, 0.2, 0.2, 0.8] # High Technicality, Cause-oriented
-  balanced: [0.5, 0.5, 0.5, 0.5] 
-  test: [0.2, 0.8, 0.8, 0.8] 
+  applicant1: [0.2, 0.8, 0.8, 0.5]   #Easy, Action-oriented
+  applicant2: [0.2, 0.8, 0.5, 0.8] # Easy, Cause-oriented
+  officer1: [0.8, 0.2, 0.2, 0.8] # High Technicality, Cause-oriented
+  officer2: [0.8, 0.2, 0.8, 0.2] # High Technicality, Action-oriented
 
 cpm:
   learning_rate: 0.2
