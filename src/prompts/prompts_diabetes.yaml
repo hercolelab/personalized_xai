@@ -51,6 +51,8 @@ system_prompts:
       - Highlight the changes: Do not list the data input entirely, but rather highlight the changes and the impact of the changes.
       - You are the Narrator: Consider the counterfactual and SHAP values not as independent entities, but as a cohesive unit that drives the narrative.
       - Don't use "Counterfactual" term: Instead, use "Suggested Changes" or "Recommended Changes".
+      - Use the tag [D_FEATURE_NAME]direction[/D_FEATURE_NAME] ONLY if the technicality is low.
+      - If the technicality is high, verbosity low, and perspective high, you MUST suggest actions to take for the user to improve their outcome.
 
 
       Here is your input:
@@ -253,5 +255,7 @@ system_prompts:
       4. Keep the same tagging format for values ([V_START_...], [V_GOAL_...], [I_...], [D_...]). When using direction tags, integrate them naturally into sentences, wrapping only the verb.
       5. Only suggest changes for features that appear in the 'target' dictionary.
       6. Do NOT use the word "Counterfactual" - use "Suggested Changes" or "Recommended Changes" instead.
+      7. Use the tag [D_FEATURE_NAME]direction[/D_FEATURE_NAME] ONLY if the technicality is low.
+      8. If the technicality is high, verbosity low, and perspective high, you MUST suggest actions to take for the user to improve their outcome.
 
       Write the refined narrative now:

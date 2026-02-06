@@ -22,8 +22,8 @@ xai:
 
 # [technicality, verbosity, depth, perspective]
 personas:
-  patient: [0.2, 0.8, 0.8, 0.8] # Simple, Action-oriented
-  clinician: [0.8, 0.2, 0.2, 0.8] # High Tech, Cause-oriented
+  patient: [0.2, 0.8, 0.8, 0.5] # Simple, Action-oriented
+  clinician: [0.8, 0.2, 0.8, 0.2] # High Tech, Cause-oriented
   balanced: [0.5, 0.5, 0.5, 0.5] # Balanced analysis
   test: [0.8, 0.2, 0.2, 0.8] # Test style
 
@@ -34,7 +34,7 @@ verifier:
   tolerances:
     default: 0.5
     impact: 0.005
-    alignment: 0.35
+    alignment: 0.3
   alias_map:
     BLOODPRESSURE: ["BP", "BLOOD_PRESSURE", "PRESSIONE", "B_P"]
     DIABETESPEDIGREEFUNCTION: ["DPF", "PEDIGREE", "GENETICS", "FAMILY_HISTORY"]
@@ -80,7 +80,7 @@ rag:
   enabled: true
   embedding_model: "embeddinggemma" # Ollama embedding model
   top_k: 3 # Number of chunks to retrieve
-  min_similarity: 0.45
+  min_similarity: 0.4
   max_context_chars: 3000 # Cap for injected RAG context length
   max_context_chunks: 3 # Max number of chunks to include
   chromadb_path: "data/chromadb"

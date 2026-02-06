@@ -577,6 +577,14 @@ def main():
 
     best_idx = int(np.argmax(probs))
     instance_idx = args.instance_idx if args.instance_idx is not None else best_idx
+    
+    # Validate instance_idx is within bounds
+    test_size = len(orchestrator.backend.X_test)
+    if instance_idx < 0 or instance_idx >= test_size:
+        raise ValueError(
+            f"instance_idx {instance_idx} is out of bounds. "
+            f"Test set has {test_size} instances (valid indices: 0-{test_size-1})."
+        )
 
     # Run the loop
     if args.interactive:

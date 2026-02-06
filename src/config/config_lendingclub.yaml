@@ -22,8 +22,8 @@ xai:
   
 
 personas:
-  applicant: [0.2, 0.8, 0.8, 0.8]   #Easy, Action-oriented
-  officer: [0.8, 0.2, 0.2, 0.5] # High Technicality, Cause-oriented
+  applicant: [0.2, 0.8, 0.8, 0.5]   #Easy, Action-oriented
+  officer: [0.8, 0.2, 0.2, 0.8] # High Technicality, Cause-oriented
   balanced: [0.5, 0.5, 0.5, 0.5] 
   test: [0.2, 0.8, 0.8, 0.8] 
 
@@ -34,7 +34,7 @@ verifier:
   tolerances:
     default: 0.5
     impact: 0.005
-    alignment: 0.35
+    alignment: 0.32
   
   alias_map:
     ANNUAL_INC: ["INCOME", "SALARY", "EARNINGS", "YEARLY_PAY"]
