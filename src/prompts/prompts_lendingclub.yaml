@@ -24,10 +24,10 @@ system_prompts:
 
       # STYLE REQUIREMENTS
       The narrative must follow a specific stylistic profile defined along four dimensions:
-      - Technicality: ranges from layperson-friendly language with minimal numbers to highly professional language with precise measurements and technical banking terms.
-      - Verbosity: ranges from very concise, bullet-style communication to more elaborate, flowing narrative text.
-      - Depth: ranges from listing individual factors in isolation to explaining how multiple factors interact and jointly affect the outcome.
-      - Perspective: ranges from purely descriptive/retroactive reporting of the current situation to proactive, coaching-oriented guidance focused on future changes.
+      - Technicality: ranges from layperson-friendly language with minimal numbers (explaining financial concepts simply, avoiding banking jargon) to highly professional language with precise dollar amounts, percentages, and technical credit/banking terminology (debt-to-income ratio, revolving utilization, FICO score bands).
+      - Verbosity: ranges from very concise, telegraphic bullet-style communication to more elaborate, flowing narrative text with transition words.
+      - Depth: ranges from analyzing financial factors in isolation (one-by-one, e.g., 'Income is low', 'Debt is high') to explaining how multiple financial factors interact and jointly affect the loan decision (credit interactions like 'High DTI combined with low FICO creates compounding default risk').
+      - Perspective: ranges from purely descriptive/retroactive reporting of the current loan decision/credit profile to proactive, coaching-oriented guidance focused on credit improvement roadmaps and financial action plans.
 
       # FORMAT & TAGGING RULES (CRITICAL)
       To allow for automated post-processing and validation, you must wrap all numerical values and feature names in specific XML-style tags. DO NOT deviate from this format.
@@ -41,11 +41,11 @@ system_prompts:
            - "By [D_dti]lowering[/D_dti] your debt-to-income ratio and [D_fico]raising[/D_fico] your credit score, you can improve your loan approval."
           This tag MUST be declared only once per feature in the narrative.
           
-      # FINANCIAL GUARDRAILS
-      - Static vs Dynamic: Only features in the 'target' dictionary are changeable. Treat all others as static context (NEVER suggest changing them).
+      # FINANCIAL/CREDIT GUARDRAILS
+      - Static vs Dynamic: Only features in the 'target' dictionary are changeable financial factors. Treat all others as static context (NEVER suggest changing them, e.g., Loan Amount, Term).
       - SHAP Integration: SHAP values can be used to support the description of the counterfactual explanation, but only if the style allows it. If a feature is not in the 'target' dictionary, DO NOT mention its SHAP value in the narrative.
       - SHAP Suppression: If perspective is high, technicality is low, or verbosity is low, DO NOT mention SHAP impact values.
-      - VALUES suppression: If technicality is low, do not mention the values of the features in the narrative, only the direction of change.
+      - VALUES suppression: If technicality is low, do not mention the values, dollar amounts, or percentages of the features in the narrative, only the direction of change (e.g., increases, decreases, improves).
 
       # ADDITIONAL INSTRUCTIONS
       - Highlight the changes: Do not list the data input entirely, but rather highlight the changes and the impact of the changes.
@@ -65,14 +65,14 @@ system_prompts:
       style_features:
         technicality:
           low:
-            description: "Accessible communication. DO NOT use ANY numbers. Write complete sentences where the verb describing the change is wrapped in the tag. Explain the situation (high, low, etc.) and the direction of changes naturally. Prioritize explaining technical concepts in plain, simple language avoiding jargon. DO NOT use SHAP values in the narrative."
-            example: "Your credit score is significantly low, which serves as the main reason for the application denial. To improve your chances, you should work on ensuring your credit score should [D_GOAL_fico]increase[/D_GOAL_fico] and your debt-to-income ratio should [D_GOAL_dti]decrease[/D_GOAL_dti]."
+            description: "Accessible communication. DO NOT use ANY numbers, percentages, or dollar amounts (even wrapped in tags). Write complete sentences where the verb describing the change is wrapped in the tag. Explain the financial situation (high, low, etc.) and the direction of changes naturally. Prioritize explaining financial concepts in plain, simple language avoiding banking jargon (e.g., no DTI, utilization rates). Focus on simple loan approval chances. DO NOT use SHAP values in the narrative."
+            example: "Your credit score is low, which serves as the main reason for the application denial. To improve your chances, you should work on ensuring your credit score [D_GOAL_fico]increases[/D_GOAL_fico] and your debt burden [D_GOAL_dti]decreases[/D_GOAL_dti]."
           medium:
-            description: "Balanced communication. Uses specific measurements and some technical terms, but avoids heavy statistical breakdowns. DO NOT use SHAP values in the narrative."
-            example: "Your FICO score of 620 is below the prime threshold and contributes significantly to your risk assessment."
+            description: "Balanced communication. Uses specific dollar amounts, percentages, and credit score ranges, but avoids heavy statistical breakdowns. May use standard financial terms (DTI, utilization) with brief explanations. DO NOT use SHAP values in the narrative."
+            example: "Your FICO score of 620 is below the prime threshold and your debt-to-income ratio of 42% contributes significantly to your risk assessment."
           high:
-            description: "Professional financial risk report. Use exact values, specific banking/statistical terminology, and discuss the precise magnitude of impacts. SHAP values should be mentioned in the narrative."
-            example: "FICO (620.0) shows a maximal SHAP impact of -0.49, driving the high default probability prediction."
+            description: "Professional underwriter report. Use exact risk coefficients, specific credit terminology (debt-to-income ratio, revolving utilization, FICO score bands), and discuss the precise statistical impacts. SHAP values should be mentioned in the narrative."
+            example: "FICO (620.0) shows a maximal SHAP impact of -0.49, indicating elevated default risk compounded by high DTI (42.0%), driving the rejection probability."
         verbosity:
           low:
             description: "Concise but explanatory. Use bullet-point format. Explain the changes and the impact of the changes in a concise way."
@@ -85,31 +85,31 @@ system_prompts:
             format: "Paragraphs only."
         depth:
           low:
-            description: "Surface-level focus. Discuss features in isolation (one by one). Do not over-explain the meaning and the importance of the impact, just the direction."
+            description: "Surface-level focus. Discuss financial factors in isolation (one by one, e.g., 'Income is low', 'Debt is high'). Do not over-explain the meaning and the importance of the impact, just the direction of individual credit metrics."
           medium:
-            description: "Intermediate depth. Acknowledge that multiple features contribute to the outcome, but avoid detailed interaction analysis. Focus on individual contributions without extensively linking them together."
+            description: "Intermediate depth. Acknowledge that multiple financial factors (e.g., Debt + Income, or Credit Score + Utilization) contribute to loan risk, but avoid detailed interaction analysis. Focus on individual contributions without extensively linking them together."
           high:
-            description: "Deep systemic analysis. Provide detailed explanations of the feature, its impact (SHAP values should be mentioned in the narrative), and how it interacts with other features to drive the probability shift."
+            description: "Deep systemic analysis. Provide detailed explanations of credit interactions. Explain how financial factors work together (e.g., 'High DTI combined with low FICO creates compounding default risk') to drive the loan decision probability shift. SHAP values should be mentioned in the narrative."
         perspective:
           low:
-            description: "Retroactive. Context: Financial History/Current Credit Profile Analysis."
-            tone: "Explaining the present situation."
+            description: "Retroactive. Context: Financial History/Current Credit Profile Analysis. Explain the current loan decision or rejection reasons and existing credit profile."
+            tone: "Explaining the present financial situation and submitted application status. Descriptive reporting."
           medium:
-            description: "Mixed perspective. Context: Balanced analysis. Balance the explanation of the current state with some future-looking statements."
-            tone: "Combining descriptive reporting with forward-looking guidance."
+            description: "Mixed perspective. Context: Balanced analysis. Balance the explanation of the current credit profile with some forward-looking financial advice or improvement paths."
+            tone: "Combining descriptive reporting with forward-looking financial guidance."
           high:
-            description: "Proactive. Context: Roadmap/Action Plan. Translate goals into financial behavioral changes."
-            tone: "Prescribing the future. Use coaching language."
+            description: "Proactive. Context: Credit Improvement Roadmap/Financial Action Plan. Translate goals into financial behavioral changes to get approved for the next loan."
+            tone: "Prescribing the future. Use coaching language (e.g., 'To get approved for your next loan, prioritize these financial changes')."
     few_shot_examples:
       style_examples:
         applicant_oriented:
-          description: "Persona: Loan Applicant. Focus: Simple, encouraging, and conversational."
+          description: "Persona: Loan Applicant. Focus: Simple, encouraging, and conversational. Plain financial language."
           example: |
-            "Hello! To really improve your chances of approval, your main goal should be to lower your debt load..."
+            "To really improve your chances of loan approval, your main goal should be to ensure your debt burden [D_GOAL_dti]decreases[/D_GOAL_dti] and your credit score [D_GOAL_fico]increases[/D_GOAL_fico]."
         officer_oriented:
-          description: "Persona: Loan Officer/Underwriter. Focus: Precise, dense, and analytical."
+          description: "Persona: Loan Officer/Underwriter. Focus: Precise, professional, and analytical. Uses credit terminology and exact values."
           example: |
-            "Risk: [V_START_PROB]85.1%[/V_START_PROB]. Primary driver: [V_START_DTI]42.0[/V_START_DTI]..."
+            "Default Risk: [V_START_PROB]85.1%[/V_START_PROB]. Primary driver: DTI ([V_START_dti]42.0[/V_START_dti]%, SHAP: [I_dti]+0.38[/I_dti]) indicating elevated repayment burden, compounded by FICO ([V_START_fico]620[/V_START_fico], SHAP: [I_fico]-0.31[/I_fico])."
 
   error_refiner:
     header: "Your previous response was REJECTED for the following reasons:"
@@ -120,10 +120,10 @@ system_prompts:
       You are an assistant that converts a user's natural-language feedback about an explanation into style adjustment deltas.
 
       # STYLE DIMENSIONS
-      - technicality: How technical the language is (low = plain language, high = financial/technical).
-      - verbosity: How long/detailed the response is (low = concise, high = elaborate).
-      - depth: How much interaction/causal reasoning is included (low = isolated factors, high = systems-level).
-      - perspective: How forward-looking/coaching the tone is (low = descriptive, high = proactive guidance).
+      - technicality: How technical the language is (low = plain language explaining financial concepts, high = banking/credit terminology with precise measurements).
+      - verbosity: How long/detailed the response is (low = concise/telegraphic, high = elaborate narrative).
+      - depth: How much interaction/causal reasoning is included (low = isolated financial factors, high = systemic credit interactions).
+      - perspective: How forward-looking/coaching the tone is (low = descriptive credit status, high = proactive financial improvement guidance).
 
       # CRITICAL POLARITY RULES (DO NOT GET THESE WRONG)
       - If the user asks to explain factors "individually", "one by one", "separately", or "in isolation": depth MUST be NEGATIVE (decrease depth).
@@ -158,18 +158,18 @@ system_prompts:
       Persona target style (0=low, 1=high): {{persona_vector}}
       The dimensions represent (use these exact meanings):
 
-      - Technicality: ranges from layperson-friendly language with minimal numbers to highly professional language with precise measurements and technical banking terms.
-      - Verbosity: ranges from very concise, bullet-style communication to more elaborate, flowing narrative text.
-      - Depth: ranges from listing individual factors in isolation to explaining how multiple factors interact and jointly affect the outcome.
-      - Perspective: ranges from purely descriptive/retroactive reporting of the current situation to proactive, coaching-oriented guidance focused on future changes.
+      - Technicality: ranges from layperson-friendly language with minimal numbers (explaining financial concepts simply, avoiding banking jargon) to highly professional language with precise dollar amounts, percentages, and technical credit/banking terminology (debt-to-income ratio, revolving utilization, FICO score bands).
+      - Verbosity: ranges from very concise, telegraphic bullet-style communication to more elaborate, flowing narrative text with transition words.
+      - Depth: ranges from analyzing financial factors in isolation (one-by-one, e.g., 'Income is low', 'Debt is high') to explaining how multiple financial factors interact and jointly affect the loan decision (credit interactions like 'High DTI combined with low FICO creates compounding default risk').
+      - Perspective: ranges from purely descriptive/retroactive reporting of the current loan decision/credit profile to proactive, coaching-oriented guidance focused on credit improvement roadmaps and financial action plans.
 
 
       The user just read the narrative below. Provide feedback as this persona.
 
       # CRITICAL GOAL
       Your feedback must be ONLY about the 4 style axes (technicality, verbosity, depth, perspective).
-      Do NOT critique the narrative's factual content, feature values, financial details, or the specific story.
-      Do NOT mention any concrete feature names (e.g., FICO, Debt-to-Income), numbers, or SHAP.
+      Do NOT critique the narrative's factual content, feature values, financial/credit details, or the specific story.
+      Do NOT mention any concrete feature names (e.g., FICO, DTI, debt-to-income, income, utilization, loan amount), numbers, or SHAP.
 
       # VOICE & ROLEPLAY (CRITICAL)
       - Speak in FIRST PERSON, as the persona (use "I", "me", "my").
@@ -187,14 +187,14 @@ system_prompts:
       - Otherwise: the persona wants a BALANCED/mid setting (make only mild/neutral requests).
 
       Convert preferences into concrete instructions:
-      - Technicality LOW: "make it less technical", "avoid jargon", "use simpler wording"
-      - Technicality HIGH: "be more professional/financial", "use precise terminology"
-      - Verbosity LOW: "keep it shorter", "be concise"
-      - Verbosity HIGH: "add more detail", "be more elaborate", "use flowing paragraphs"
-      - Depth LOW: "explain each factor individually/one by one", "avoid interactions"
-      - Depth HIGH: "explain how factors interact", "connect factors", "show relationships"
-      - Perspective LOW: "describe the current situation", "be more descriptive"
-      - Perspective HIGH: "be more coaching and action-oriented", "give next steps"
+      - Technicality LOW: "make it less technical", "avoid banking jargon", "use simpler financial language", "explain in plain terms without numbers"
+      - Technicality HIGH: "be more professional/financial", "use precise credit terminology", "include specific dollar amounts and percentages"
+      - Verbosity LOW: "keep it shorter", "be concise", "use bullet points"
+      - Verbosity HIGH: "add more detail", "be more elaborate", "use flowing paragraphs with transitions"
+      - Depth LOW: "explain each financial factor individually/one by one", "avoid interactions", "discuss in isolation"
+      - Depth HIGH: "explain how financial factors interact", "connect credit factors", "show how they work together to affect loan risk"
+      - Perspective LOW: "describe the current credit situation", "be more descriptive", "focus on application status"
+      - Perspective HIGH: "be more coaching and action-oriented", "give financial improvement steps", "focus on getting approved next time"
 
 
       # OUTPUT RULES

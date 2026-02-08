@@ -192,7 +192,7 @@ class XAIVerifier:
         if missing:
             return (
                 False,
-                f"Completeness Error: Missing data for {sorted(missing)}.",
+                f"Completeness Error: Missing data or erroneous tags for {sorted(missing)}.",
             )
 
         return True, f"Completeness Verified"
@@ -241,7 +241,7 @@ class XAIVerifier:
             diffs = np.abs(p_vec - t_vec)
             tolerance = self.tolerances.get("alignment", 0.35)
 
-            failed = [dims[i] for i, d in enumerate(diffs) if d > tolerance]
+            failed = [dims[i] for i, d in enumerate(diffs) if d >= tolerance]
             return len(failed) == 0, {
                 "perceived": scores,
                 "target": target_style_dict,

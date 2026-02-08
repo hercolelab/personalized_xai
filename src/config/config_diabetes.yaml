@@ -34,36 +34,36 @@ verifier:
   tolerances:
     default: 0.5
     impact: 0.005
-    alignment: 0.3
+    alignment: 0.35
   alias_map:
     BLOODPRESSURE: ["BP", "BLOOD_PRESSURE", "PRESSIONE", "B_P"]
     DIABETESPEDIGREEFUNCTION: ["DPF", "PEDIGREE", "GENETICS", "FAMILY_HISTORY"]
     GLUCOSE: ["GLU", "GLICEMIA", "ZUCCHERO"]
     PREGNANCIES: ["PREG", "GRAVIDANZE"]
 
-  llm_judge_model: "gpt-oss:20b-cloud"
+  llm_judge_model: "kimi-k2.5:cloud"
 
   verifier_rubric:
     technicality:
       levels:
-        0.2: "Accessible: Uses plain language to explain financial concepts. DO NOT use ANY numbers. Must communicate direction of changes with verbs (e.g., increases, decreases). Focus is on simple approval chances, avoiding complex banking jargon. SHAP values not mentioned."
-        0.5: "Balanced: Uses specific measurements and some technical terms, but avoids heavy statistical breakdowns. SHAP values should not be mentioned in the narrative."
-        0.8: "Technical: Professional clinical report style. Uses exact values, specific medical/statistical terminology, and discusses precise statistical impacts (SHAP values should be mentioned in the narrative)."
+        0.2: "Accessible: Uses plain language to explain health concepts. DO NOT use ANY numbers or medical units. Must communicate direction of changes with verbs (e.g., increases, decreases, improves). Focus is on simple diabetes risk, avoiding complex clinical jargon. SHAP values not mentioned."
+        0.5: "Balanced: Uses specific health measurements (e.g., glucose levels, BMI values) and some medical terms, but avoids heavy statistical breakdowns. SHAP values should not be mentioned in the narrative."
+        0.8: "Technical: Professional clinical report style. Uses exact values with medical units, specific medical/statistical terminology (e.g., metabolic syndrome, insulin resistance), and discusses precise statistical impacts (SHAP values should be mentioned in the narrative)."
     verbosity:
       levels:
         0.2: "Telegraphic: Strictly uses bullet points. Very concise, short sentences, zero conversational filler."
         0.5: "Standard: Concise paragraphs or mixed formatting. Clear and direct."
-        0.8: "Narrative: High fluency. Strictly NO bullet points. Continuous prose using transition words (e.g., 'Furthermore', 'Consequently')."
+        0.8: "Narrative: High fluency. Strictly NO bullet points. Continuous prose using transition words (e.g., 'Furthermore', 'Consequently', 'Additionally')."
     depth:
       levels:
-        0.2: "Surface: Analyzes features in isolation (one-by-one). Focuses on individual impacts without linking them together."
-        0.5: "Intermediate: Acknowledges that multiple features contribute to the outcome but lacks detailed interaction analysis."
-        0.8: "Systemic: Deep analysis of interactions. Explains how features work together (e.g., 'Feature A amplifies the risk of Feature B') to drive the prediction."
+        0.2: "Surface: Analyzes health factors in isolation (one-by-one, e.g., 'Glucose is high'). Focuses on individual health metric impacts without linking them together."
+        0.5: "Intermediate: Acknowledges that multiple health factors (e.g., Glucose + BMI) contribute to diabetes risk but lacks detailed interaction analysis."
+        0.8: "Systemic: Deep analysis of metabolic interactions. Explains how health factors work together (e.g., 'High BMI combined with elevated Glucose amplifies insulin resistance') to drive the diabetes prediction."
     perspective:
       levels:
-        0.2: "Retroactive: Explains the 'Current' state. Tone is descriptive, reporting on the existing situation/medical history."
-        0.5: "Mixed: Balances the explanation of the current state with some future-looking statements."
-        0.8: "Proactive: Frames the content as a future roadmap or action plan. Tone is coaching and prescriptive."
+        0.2: "Retroactive: Explains the 'Current' health status and diabetes risk. Tone is descriptive, reporting on the existing medical situation/patient history."
+        0.5: "Mixed: Balances the explanation of the current health status with some health management suggestions."
+        0.8: "Proactive: Frames the content as a health improvement plan. Tone is coaching and prescriptive (e.g., 'To reduce your diabetes risk, focus on these lifestyle changes')."
 
 orchestrator:
   max_retries: 10

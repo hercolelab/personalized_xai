@@ -34,7 +34,7 @@ verifier:
   tolerances:
     default: 0.5
     impact: 0.005
-    alignment: 0.32
+    alignment: 0.35
   
   alias_map:
     ANNUAL_INC: ["INCOME", "SALARY", "EARNINGS", "YEARLY_PAY"]
@@ -43,29 +43,29 @@ verifier:
     FICO: ["SCORE", "CREDIT_SCORE", "RATING"]
     REVOL_UTIL: ["UTILIZATION", "CARD_USAGE", "LIMIT_USAGE"]
     
-  llm_judge_model: "gpt-oss:20b-cloud"
+  llm_judge_model: "kimi-k2.5:cloud"
 
   verifier_rubric:
     technicality:
       levels:
-        0.2: "Accessible: Uses plain language to explain financial concepts. DO NOT use ANY numbers. Must communicate direction of changes with verbs (e.g., increases, decreases). Focus is on simple approval chances, avoiding complex banking jargon. SHAP values not mentioned."
-        0.5: "Balanced: Uses specific dollar amounts and rates, but avoids heavy statistical breakdowns. SHAP values not mentioned."
-        0.8: "Technical: Professional underwriter report style. Uses exact risk coefficients, specific credit terminology, and discusses precise statistical impacts (SHAP values should be mentioned)."
+        0.2: "Accessible: Uses plain language to explain financial concepts. DO NOT use ANY numbers, percentages, or dollar amounts. Must communicate direction of changes with verbs (e.g., increases, decreases, improves). Focus is on simple loan approval chances, avoiding complex banking jargon (e.g., no DTI, utilization rates). SHAP values not mentioned."
+        0.5: "Balanced: Uses specific dollar amounts, percentages, and credit score ranges, but avoids heavy statistical breakdowns. May use standard financial terms (DTI, utilization) with brief explanations. SHAP values not mentioned."
+        0.8: "Technical: Professional underwriter report style. Uses exact risk coefficients, specific credit terminology (debt-to-income ratio, revolving utilization, FICO score bands), and discusses precise statistical impacts (SHAP values should be mentioned)."
     verbosity:
       levels:
         0.2: "Telegraphic: Strictly uses bullet points. Very concise, short sentences, zero conversational filler."
         0.5: "Standard: Concise paragraphs or mixed formatting. Clear and direct."
-        0.8: "Narrative: High fluency. Strictly NO bullet points. Continuous prose using transition words."
+        0.8: "Narrative: High fluency. Strictly NO bullet points. Continuous prose using transition words (e.g., 'Moreover', 'Consequently', 'In addition')."
     depth:
       levels:
-        0.2: "Surface: Analyzes financial factors in isolation (e.g., 'Income is low'). Focuses on individual impacts."
-        0.5: "Intermediate: Acknowledges that multiple factors (Debt + Income) contribute to risk but lacks detailed interaction analysis."
-        0.8: "Systemic: Deep analysis of interactions. Explains how features work together (e.g., 'High DTI amplifies the risk of low FICO') to drive the rejection."
+        0.2: "Surface: Analyzes financial factors in isolation (one-by-one, e.g., 'Income is low', 'Debt is high'). Focuses on individual credit metric impacts without linking them together."
+        0.5: "Intermediate: Acknowledges that multiple financial factors (e.g., Debt + Income, or Credit Score + Utilization) contribute to loan risk but lacks detailed interaction analysis."
+        0.8: "Systemic: Deep analysis of credit interactions. Explains how financial factors work together (e.g., 'High DTI combined with low FICO creates compounding default risk') to drive the loan decision."
     perspective:
       levels:
-        0.2: "Retroactive: Explains the 'Current' rejection reasons. Tone is descriptive, reporting on the submitted application status."
-        0.5: "Mixed: Balances the explanation of the current credit profile with some future-looking advice."
-        0.8: "Proactive: Frames the content as a financial recovery plan. Tone is coaching and prescriptive (e.g., 'To get approved next time, do X')."
+        0.2: "Retroactive: Explains the 'Current' loan decision or rejection reasons. Tone is descriptive, reporting on the submitted application status and existing credit profile."
+        0.5: "Mixed: Balances the explanation of the current credit profile with some forward-looking financial advice or improvement paths."
+        0.8: "Proactive: Frames the content as a credit improvement roadmap or financial action plan. Tone is coaching and prescriptive (e.g., 'To get approved for your next loan, prioritize these financial changes')."
 
 orchestrator:
   max_retries: 10

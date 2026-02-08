@@ -46,25 +46,25 @@ class NarrativeGenerator:
         # Technicality Logic
         if style["technicality"] < 0.4:
             instr.append(
-                f"TECHNICALITY LOW: {sf['technicality']['low']['description']}"
+                f"TECHNICALITY LOW: {sf['technicality']['low']['description']} Example: {sf['technicality']['low']['example']}"
             )
         elif style["technicality"] > 0.7:
             instr.append(
-                f"TECHNICALITY HIGH: {sf['technicality']['high']['description']}"
+                f"TECHNICALITY HIGH: {sf['technicality']['high']['description']} Example: {sf['technicality']['high']['example']}"
             )
         else:
             instr.append(
-                f"TECHNICALITY MEDIUM: {sf['technicality']['medium']['description']}"
+                f"TECHNICALITY MEDIUM: {sf['technicality']['medium']['description']} Example: {sf['technicality']['medium']['example']}"
             )
 
         # Verbosity Logic
         if style["verbosity"] < 0.4:
-            instr.append(f"VERBOSITY LOW: {sf['verbosity']['low']['description']}")
+            instr.append(f"VERBOSITY LOW: {sf['verbosity']['low']['description']} Format: {sf['verbosity']['low']['format']}")
         elif style["verbosity"] > 0.7:
-            instr.append(f"VERBOSITY HIGH: {sf['verbosity']['high']['description']}")
+            instr.append(f"VERBOSITY HIGH: {sf['verbosity']['high']['description']} Format: {sf['verbosity']['high']['format']}")
         else:
             instr.append(
-                f"VERBOSITY MEDIUM: {sf['verbosity']['medium']['description']}"
+                f"VERBOSITY MEDIUM: {sf['verbosity']['medium']['description']} Format: {sf['verbosity']['medium']['format']}"
             )
 
         # Depth Logic
