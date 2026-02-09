@@ -25,7 +25,9 @@ class PersonaFeedbackAgent:
         # Infer prompt_path from config_path if not provided
         if prompt_path is None:
             csv_path = self.cfg.get("data", {}).get("csv_path", "diabetes")
-            dataset_name = csv_path.split("/")[-1].replace("_cleaned.csv", "").replace(".csv", "")
+            dataset_name = (
+                csv_path.split("/")[-1].replace("_cleaned.csv", "").replace(".csv", "")
+            )
             prompt_path = f"src/prompts/prompts_{dataset_name}.yaml"
 
         with open(prompt_path, "r") as f:
@@ -83,7 +85,9 @@ class AgentJudgeEvaluator:
         # Infer prompt_path from config_path if not provided
         if prompt_path is None:
             csv_path = self.cfg.get("data", {}).get("csv_path", "diabetes")
-            dataset_name = csv_path.split("/")[-1].replace("_cleaned.csv", "").replace(".csv", "")
+            dataset_name = (
+                csv_path.split("/")[-1].replace("_cleaned.csv", "").replace(".csv", "")
+            )
             prompt_path = f"src/prompts/prompts_{dataset_name}.yaml"
 
         self.orchestrator = HumanInteractiveOrchestrator(config_path)
@@ -301,10 +305,17 @@ def _pick_best_idx(orchestrator: HumanInteractiveOrchestrator) -> int:
 def main():
     parser = argparse.ArgumentParser(description="Agent-as-a-Judge evaluation")
     parser.add_argument(
+        "--dataset",
+        type=str,
+        choices=["diabetes", "lendingclub"],
+        required=True,
+        help="Dataset to use: 'diabetes' or 'lendingclub'.",
+    )
+    parser.add_argument(
         "--persona",
         type=str,
         required=False,
-        help="Persona name from config.yaml (e.g., patient, clinician).",
+        help="Persona name from the selected dataset config.",
     )
     parser.add_argument(
         "--instance_idx",
@@ -332,13 +343,28 @@ def main():
     parser.add_argument(
         "--output_csv",
         type=str,
-        default="data/results/agent_judge_eval.csv",
-        help="Output CSV path for batch results.",
+        default=None,
+        help="Output CSV path for batch results (defaults by dataset).",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume batch mode by skipping samples already in output CSV.",
     )
     args = parser.parse_args()
 
-    config_path = "src/config/config.yaml"
+    if args.dataset == "diabetes":
+        config_path = "src/config/config_diabetes.yaml"
+    elif args.dataset == "lendingclub":
+        config_path = "src/config/config_lendingclub.yaml"
+    else:
+        config_path = "src/config/config.yaml"
+
+    if args.output_csv is None:
+        args.output_csv = f"data/results/agent_judge_eval_{args.dataset}.csv"
+
     evaluator = AgentJudgeEvaluator(config_path)
+    available_personas = list(evaluator.cfg.get("personas", {}).keys())
     max_steps = (
         args.max_steps
         if args.max_steps is not None
@@ -358,7 +384,26 @@ def main():
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
 
-        with open(args.output_csv, "w", newline="") as f:
+        existing_samples: set[int] = set()
+        if args.resume and os.path.exists(args.output_csv):
+            with open(args.output_csv, "r", newline="") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    try:
+                        existing_samples.add(int(row.get("sample_idx", "")))
+                    except (TypeError, ValueError):
+                        continue
+
+        remaining_idxs = [idx for idx in top_k_idxs if idx not in existing_samples]
+        if args.resume and existing_samples:
+            print(
+                f"[Batch] Resuming: {len(existing_samples)} completed, "
+                f"{len(remaining_idxs)} remaining (top_k={args.top_k})"
+            )
+
+        write_header = not os.path.exists(args.output_csv) or not args.resume
+        mode = "a" if args.resume else "w"
+        with open(args.output_csv, mode, newline="") as f:
             writer = csv.DictWriter(
                 f,
                 fieldnames=[
@@ -369,9 +414,10 @@ def main():
                     "success",
                 ],
             )
-            writer.writeheader()
+            if write_header:
+                writer.writeheader()
 
-            for sample_idx in top_k_idxs:
+            for sample_idx in remaining_idxs:
                 persona = rng.choice(persona_names)
                 print(
                     f"\n[Batch] sample_idx={sample_idx} persona={persona} (top_k={args.top_k})"
@@ -386,9 +432,18 @@ def main():
                         "success": result["success"],
                     }
                 )
+                f.flush()
     else:
         if not args.persona:
-            raise ValueError("--persona is required unless --batch is set.")
+            raise ValueError(
+                "--persona is required unless --batch is set. "
+                f"Available personas: {', '.join(available_personas)}"
+            )
+        if available_personas and args.persona not in available_personas:
+            raise ValueError(
+                f"Invalid persona '{args.persona}'. "
+                f"Available personas: {', '.join(available_personas)}"
+            )
 
         instance_idx = (
             args.instance_idx
