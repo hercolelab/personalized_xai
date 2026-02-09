@@ -41,7 +41,8 @@ verifier:
     FICO: ["SCORE", "CREDIT_SCORE", "RATING"]
     REVOL_UTIL: ["UTILIZATION", "CARD_USAGE", "LIMIT_USAGE"]
 
-  llm_judge_model: "groq:openai/gpt-oss-20b"
+  # llm_judge_model: "groq:openai/gpt-oss-20b"
+  llm_judge_model: "gpt-oss:20b-cloud"
 
   verifier_rubric:
     technicality:
