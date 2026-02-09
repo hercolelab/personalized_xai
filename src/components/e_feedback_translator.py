@@ -1,7 +1,7 @@
 import json
 import re
 import yaml
-from src.components.ollama_client import OllamaClient
+from src.components.llm_client import LLMClient
 
 
 class FeedbackTranslator:
@@ -16,7 +16,9 @@ class FeedbackTranslator:
         # Infer prompt_path from config_path if not provided
         if prompt_path is None:
             csv_path = self.cfg.get("data", {}).get("csv_path", "diabetes")
-            dataset_name = csv_path.split("/")[-1].replace("_cleaned.csv", "").replace(".csv", "")
+            dataset_name = (
+                csv_path.split("/")[-1].replace("_cleaned.csv", "").replace(".csv", "")
+            )
             prompt_path = f"src/prompts/prompts_{dataset_name}.yaml"
 
         with open(prompt_path, "r") as f:
@@ -26,7 +28,7 @@ class FeedbackTranslator:
             ]
 
         self.model_name = self.cfg["verifier"].get("llm_judge_model", "llama3")
-        self.ollama = OllamaClient.from_model(self.model_name)
+        self.ollama = LLMClient.from_model(self.model_name)
 
         self.dimensions = ["technicality", "verbosity", "depth", "perspective"]
 

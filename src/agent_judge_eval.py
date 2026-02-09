@@ -9,7 +9,7 @@ import torch
 import yaml
 from langgraph.graph import END, StateGraph
 
-from src.components.ollama_client import OllamaClient
+from src.components.llm_client import LLMClient
 from src.orchestrator import HumanInteractiveOrchestrator
 
 
@@ -37,7 +37,7 @@ class PersonaFeedbackAgent:
             ]
 
         self.model_name = self.cfg["verifier"].get("llm_judge_model", "llama3")
-        self.ollama = OllamaClient.from_model(self.model_name)
+        self.ollama = LLMClient.from_model(self.model_name)
 
     def generate(self, persona_name: str, persona_vector: list, narrative: str) -> str:
         prompt = (

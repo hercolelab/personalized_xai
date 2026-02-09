@@ -1,7 +1,7 @@
 import json
 import yaml
 
-from src.components.ollama_client import OllamaClient
+from src.components.llm_client import LLMClient
 
 
 class NarrativeGenerator:
@@ -22,7 +22,7 @@ class NarrativeGenerator:
             rag_retriever: Optional RAGRetriever instance for context augmentation
         """
         self.model_name = model_name
-        self.ollama = OllamaClient.from_model(self.model_name)
+        self.ollama = LLMClient.from_model(self.model_name)
         self.rag = rag_retriever
 
         # Infer prompt_path from config_path if not provided
@@ -30,7 +30,9 @@ class NarrativeGenerator:
             with open(config_path, "r") as f:
                 cfg = yaml.safe_load(f)
             csv_path = cfg.get("data", {}).get("csv_path", "diabetes")
-            dataset_name = csv_path.split("/")[-1].replace("_cleaned.csv", "").replace(".csv", "")
+            dataset_name = (
+                csv_path.split("/")[-1].replace("_cleaned.csv", "").replace(".csv", "")
+            )
             prompt_path = f"src/prompts/prompts_{dataset_name}.yaml"
 
         # Load the externalized prompts
@@ -59,9 +61,13 @@ class NarrativeGenerator:
 
         # Verbosity Logic
         if style["verbosity"] < 0.4:
-            instr.append(f"VERBOSITY LOW: {sf['verbosity']['low']['description']} Format: {sf['verbosity']['low']['format']}")
+            instr.append(
+                f"VERBOSITY LOW: {sf['verbosity']['low']['description']} Format: {sf['verbosity']['low']['format']}"
+            )
         elif style["verbosity"] > 0.7:
-            instr.append(f"VERBOSITY HIGH: {sf['verbosity']['high']['description']} Format: {sf['verbosity']['high']['format']}")
+            instr.append(
+                f"VERBOSITY HIGH: {sf['verbosity']['high']['description']} Format: {sf['verbosity']['high']['format']}"
+            )
         else:
             instr.append(
                 f"VERBOSITY MEDIUM: {sf['verbosity']['medium']['description']} Format: {sf['verbosity']['medium']['format']}"
@@ -111,7 +117,6 @@ class NarrativeGenerator:
             f"Explain the meaning and implications of the following features: {', '.join(changed_features)}."
         ]
 
-        
         return " ".join(query_parts)
 
     def generate(self, raw_data, style, hint=None, use_rag: bool = True):
@@ -140,7 +145,9 @@ class NarrativeGenerator:
             if chunks:
                 if self.rag.debug:
                     for i, c in enumerate(chunks):
-                        print(f"   [{i + 1}] sim={c['similarity']:.3f} from {c['source']}")
+                        print(
+                            f"   [{i + 1}] sim={c['similarity']:.3f} from {c['source']}"
+                        )
                 rag_context = (
                     "\n\n# DOMAIN KNOWLEDGE (Use this to enhance your explanations)\n"
                 )

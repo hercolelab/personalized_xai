@@ -2,7 +2,7 @@ import re
 import json
 import numpy as np
 import yaml
-from src.components.ollama_client import OllamaClient
+from src.components.llm_client import LLMClient
 
 
 class XAIVerifier:
@@ -17,7 +17,9 @@ class XAIVerifier:
         # Infer prompt_path from config_path if not provided
         if prompt_path is None:
             csv_path = self.cfg.get("data", {}).get("csv_path", "diabetes")
-            dataset_name = csv_path.split("/")[-1].replace("_cleaned.csv", "").replace(".csv", "")
+            dataset_name = (
+                csv_path.split("/")[-1].replace("_cleaned.csv", "").replace(".csv", "")
+            )
             prompt_path = f"src/prompts/prompts_{dataset_name}.yaml"
 
         with open(prompt_path, "r") as f:
@@ -31,7 +33,7 @@ class XAIVerifier:
                 raise
 
         self.model_name = self.cfg["verifier"].get("llm_judge_model", "llama3")
-        self.ollama = OllamaClient.from_model(self.model_name)
+        self.ollama = LLMClient.from_model(self.model_name)
 
         self.tolerances = self.cfg["verifier"].get("tolerances", {})
         self.alias_map = self.cfg["verifier"].get("alias_map", {})
@@ -103,7 +105,10 @@ class XAIVerifier:
             # Validate all direction tags that are present
             for feat, direction in extracted["directions"].items():
                 # Find matching feature in ground truth
-                match = next((k for k in ground_truth.get("target", {}) if k.upper() in feat), None)
+                match = next(
+                    (k for k in ground_truth.get("target", {}) if k.upper() in feat),
+                    None,
+                )
                 if match:
                     current_val = ground_truth.get("current", {}).get(match)
                     target_val = ground_truth.get("target", {}).get(match)
@@ -113,7 +118,10 @@ class XAIVerifier:
                             current_val, target_val, direction, feat
                         )
                         if not is_valid:
-                            return False, f"Direction validation failed for {feat}: {err}"
+                            return (
+                                False,
+                                f"Direction validation failed for {feat}: {err}",
+                            )
 
         return True, "Faithfulness Verified"
 
@@ -134,16 +142,15 @@ class XAIVerifier:
 
         # Require only features that are actually in the counterfactual (target), not other top-SHAP features
         required_features = set(actual_changes)
-        
 
         missing = set()
         technicality_low = style.get("technicality", 0.5) <= 0.33
-        
+
         for feat in required_features:
             feat_upper = feat.upper()
             valid_names = [feat_upper] + self.alias_map.get(feat_upper, [])
             pattern = "|".join([re.escape(n) for n in valid_names])
-            
+
             # When technicality is low, we don't require V_START, but we require D_ tags
             if technicality_low:
                 # Check for direction tag or feature mention
@@ -155,14 +162,12 @@ class XAIVerifier:
                 found = re.search(
                     rf"\[(V_START|V_GOAL|I)_({pattern})\]", narrative, re.IGNORECASE
                 ) or any(name.lower() in narrative.lower() for name in valid_names)
-            
+
             if not found:
                 missing.add(feat)
 
         # When technicality or depth is high, require SHAP values present for all target features
-        requires_shap = (
-            style.get("technicality", 0) > 0.7
-        )
+        requires_shap = style.get("technicality", 0) > 0.7
         if requires_shap:
             target_features = list(ground_truth.get("target", {}).keys())
             for feat in target_features:
@@ -176,7 +181,7 @@ class XAIVerifier:
                 )
                 if not shap_present:
                     missing.add(feat)
-        
+
         # When technicality is low, ensure direction tags are present for all changed features
         if technicality_low:
             for feat in required_features:
@@ -184,7 +189,7 @@ class XAIVerifier:
                 valid_names = [feat_upper] + self.alias_map.get(feat_upper, [])
                 pattern = "|".join([re.escape(n) for n in valid_names])
                 direction_present = re.search(
-                        rf"\[D_({pattern})\]", narrative, re.IGNORECASE
+                    rf"\[D_({pattern})\]", narrative, re.IGNORECASE
                 )
                 if not direction_present:
                     missing.add(f"{feat} (direction tag required)")
@@ -250,7 +255,9 @@ class XAIVerifier:
         except Exception as e:
             return False, {"error": f"Judge failure: {str(e)}"}
 
-    def _validate_direction(self, initial_value, changed_value, direction, feature_name):
+    def _validate_direction(
+        self, initial_value, changed_value, direction, feature_name
+    ):
         """
         Validates that the direction verb correctly describes the change from initial to changed value.
         Uses LLM similar to verify_alignment pattern.
@@ -259,7 +266,7 @@ class XAIVerifier:
         try:
             initial = float(initial_value)
             changed = float(changed_value)
-            
+
             validation_prompt = f"""You are a helpful assistant that validates whether a direction verb correctly describes a numerical change.
 
                 Given:
@@ -278,7 +285,10 @@ class XAIVerifier:
                 res = self._query_llm(validation_prompt)
                 result = json.loads(re.search(r"\{.*\}", res, re.DOTALL).group())
                 if result.get("final_answer", "").lower() == "no":
-                    return False, f"Direction '{direction}' does not match change from {initial} to {changed}"
+                    return (
+                        False,
+                        f"Direction '{direction}' does not match change from {initial} to {changed}",
+                    )
                 return True, ""
             except Exception as e:
                 return False, f"Direction validation error: {str(e)}"

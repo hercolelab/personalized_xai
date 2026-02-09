@@ -43,7 +43,7 @@ class _CompatResponse:
 
 
 @dataclass
-class OllamaClient:
+class LLMClient:
     model_name: str
     api_url: str
     api_key: Optional[str]
@@ -57,9 +57,7 @@ class OllamaClient:
             api_key = os.getenv("GROQ_API_KEY")
             if warn_if_missing_key and not api_key:
                 print("[Warning] GROQ_API_KEY not set. Groq requires authentication.")
-                print(
-                    "[Info] Set GROQ_API_KEY environment variable for Groq access."
-                )
+                print("[Info] Set GROQ_API_KEY environment variable for Groq access.")
             return cls(
                 model_name=strip_groq_prefix(model_name),
                 api_url=api_url,
@@ -117,9 +115,9 @@ class OllamaClient:
             )
             response.raise_for_status()
             data = response.json()
-            message = (
-                data.get("choices", [{}])[0].get("message", {}) or {}
-            ).get("content", "")
+            message = (data.get("choices", [{}])[0].get("message", {}) or {}).get(
+                "content", ""
+            )
             return _CompatResponse(message, data, status_code=response.status_code)
 
         response = requests.post(

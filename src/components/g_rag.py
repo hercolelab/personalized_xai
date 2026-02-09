@@ -8,7 +8,7 @@ from chromadb.config import Settings
 from chromadb.api.types import EmbeddingFunction, Documents, Embeddings
 from chromadb.errors import NotFoundError
 
-from src.components.ollama_client import OllamaClient
+from src.components.llm_client import LLMClient
 
 
 class OllamaEmbeddingFunction(EmbeddingFunction[Documents]):
@@ -16,7 +16,7 @@ class OllamaEmbeddingFunction(EmbeddingFunction[Documents]):
 
     def __init__(self, model: str = "embeddinggemma"):
         self.model = model
-        self.client = OllamaClient.from_model("local", warn_if_missing_key=False)
+        self.client = LLMClient.from_model("local", warn_if_missing_key=False)
 
     def __call__(self, input: Documents) -> Embeddings:
         """Generate embeddings for a list of texts (ChromaDB interface)."""
@@ -139,9 +139,7 @@ class RAGRetriever:
             )
             chunk_count = self.collection.count()
             if self.debug:
-                print(
-                    f" [RAG] Loaded existing collection with {chunk_count} chunks"
-                )
+                print(f" [RAG] Loaded existing collection with {chunk_count} chunks")
             # If collection exists but is empty, delete and recreate it
             if chunk_count == 0:
                 if self.debug:
