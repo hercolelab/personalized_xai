@@ -8,10 +8,12 @@ This repository implements a modular pipeline designed to translate raw **Explai
 
 ## Use Case
 
-The system targets clinical decision support, specifically for diabetes risk prediction. It transforms complex statistical outputs—**SHAP impact values** and **DiCE counterfactuals**—into coherent natural language explanations. The pipeline dynamically adapts its tone and content based on the user profile:
+The system targets two domains:
 
-- **Clinician**: Cold, analytical, and data-driven reports focusing on statistical relevance and SHAP contributions.  
-- **Patient**: Proactive, coaching-oriented narratives emphasizing actionable lifestyle changes derived from counterfactual explanations.
+- **Clinical decision support** for diabetes risk prediction
+- **Consumer lending** for credit risk assessment (LendingClub)
+
+It transforms complex statistical outputs—**SHAP impact values** and **DiCE counterfactuals**—into coherent natural language explanations. The pipeline dynamically adapts its tone and content based on the user profile.
 
 ---
 
@@ -19,47 +21,69 @@ The system targets clinical decision support, specifically for diabetes risk pre
 
 The repository follows a modular architecture that separates data processing, style modeling, narrative generation, and verification:
 
-- **`src/components/a_setup_xai.py`**: The backend module. Handles the `diabetes.csv` dataset, trains predictive models, and generates raw SHAP and DiCE explanations.
-- **`src/components/b_cpm.py`**: The **Contextual Preference Model**. Defines style vectors (Technicality, Verbosity, Depth, Perspective) for different user roles.
-- **`src/components/c_generator.py`**: The narrative engine. Interfaces with a local LLM (Ollama) to synthesize explanations using templates and instructions from `prompts.yaml`.
-- **`src/components/d_verifiers.py`**: The verification suite. Performs **Rejection Sampling** based on numerical faithfulness, feature completeness, and stylistic rubric alignment.
-- **`src/config/config.yaml`**: Centralized configuration file for API endpoints, model parameters, numerical tolerances, and feature aliases.
-- **`src/prompts/prompts.yaml`**: The core prompt repository. Contains system roles, clinical guardrails, and categorical rubrics used by the AI Judge for alignment evaluation.
-- **`src/orchestrator.py`**: The execution core. Manages the generation–verification loop and provides corrective feedback to the LLM for iterative self-improvement.
+- **`src/components/a_setup_xai.py`**: Handles dataset loading, model training, and SHAP/DiCE generation.
+- **`src/components/b_cpm.py`**: The **Contextual Preference Model**. Defines style vectors for different user roles.
+- **`src/components/c_generator.py`**: Narrative engine. Interfaces with Ollama to synthesize explanations using templates and instructions.
+- **`src/components/d_verifiers.py`**: Verification suite. Performs rejection sampling for faithfulness and stylistic alignment.
+- **`src/components/e_feedback_translator.py`**: Converts natural language feedback into actionable correction hints for the LLM.
+- **`src/components/f_refiner.py`**: Refines candidate explanations using structured feedback.
+- **`src/components/g_rag.py`**: Optional RAG pipeline for grounded explanations.
+- **`src/components/llm_client.py`**: LLM client wrapper for local or cloud [Ollama](https://ollama.com/) and [Groq](https://groq.com/).
+- **`src/config/`**: Dataset-specific configs (e.g., `config_diabetes.yaml`, `config_lendingclub.yaml`).
+- **`src/prompts/`**: Dataset-specific prompts and rubrics (e.g., `prompts_diabetes.yaml`, `prompts_lendingclub.yaml`).
+- **`src/orchestrator.py`**: Execution core. Manages the generation–verification loop.
+- **`src/dataset.py`**: Dataset utilities and normalization.
+- **`src/baseline_experiment.py`** / **`src/ponte_experiment.py`**: Experiment runners.
+- **`src/agent_judge_eval.py`**: Agent-as-a-Judge evaluation pipeline.
+- **`data/`**: Raw data, knowledge bases, and ChromaDB artifacts.
+- **`results/`**: Baseline, PONTE, and evaluation outputs.
+- **`webui/`**: Streamlit app for interactive runs.
 
 ---
 
 ## Getting Started
 
-1. **Install Dependencies**
+`uv` and `pip` differ only in how you install dependencies and run Python. All other steps are identical.
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 1) Install dependencies (choose one)
 
-2. **Set Up the LLM Backend**
+**Using uv (recommended):**
 
-   **Local mode (no auth required):** ensure that Ollama is running locally and that the required model is available:
+```bash
+uv sync
+```
 
-   ```bash
-   ollama serve
-   ollama pull llama3.1:8b
-   ```
+**Using pip:**
 
-   **Cloud mode (requires auth):** authenticate, then pull and use the cloud model.
+```bash
+pip install -r requirements.txt
+```
 
-   ```bash
-   # API key via environment
-   export OLLAMA_API_KEY="<your_api_key>"
+### 2) Set up the LLM backend (common)
 
-   # Start the Ollama server and pull the cloud model
-   ollama serve
-   ollama pull gpt-oss:20b-cloud
-   ```
+**Local mode (no auth required):** ensure Ollama is running locally and pull both the generation and embedding models:
 
-3. **Configure Settings**
+```bash
+ollama serve
+ollama pull gpt-oss:20b
+ollama pull embeddinggemma
+```
 
-   Adjust numerical tolerances in `src/config/config.yaml` and refine stylistic behaviors or categorical levels in `src/prompts/prompts.yaml` as needed.
+**Cloud mode (requires auth):** authenticate, then pull and use the cloud model (embedding model is still required):
+
+```bash
+# API key via environment
+export OLLAMA_API_KEY="<your_api_key>"
+
+# Start the Ollama server and pull the cloud model
+ollama serve
+ollama pull gpt-oss:20b-cloud
+ollama pull embeddinggemma
+```
+
+### 3) Configure settings (common)
+
+Adjust numerical tolerances in `src/config/config_{dataset}.yaml` and refine stylistic behaviors or categorical levels in `src/prompts/prompts_{dataset}.yaml` as needed.
 
 ---
 
@@ -68,7 +92,13 @@ The repository follows a modular architecture that separates data processing, st
 To generate a verified narrative for a specific case (by default, the orchestrator selects the highest-risk instance for testing), run:
 
 ```bash
-python3 src/orchestrator.py
+# uv
+uv run python3 -m src.orchestrator --interactive --dataset <dataset> --role <persona>
 ```
 
-The system will attempt up to 10 iterations to generate a narrative that satisfies all verification criteria. If an attempt fails, targeted correction hints are automatically fed back to the LLM to guide refinement of the next output. 
+```bash
+# pip / system python
+python3 -m src.orchestrator --interactive --dataset <dataset> --role <persona>
+```
+
+Available datasets: `diabetes`, `lendingclub`.
