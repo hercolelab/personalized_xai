@@ -1,6 +1,8 @@
-# Personalized XAI Narrative Pipeline
+# PONTE: Personalized Orchestration for Natural Language Trustworthy Explanations
 
 This repository implements a modular pipeline designed to translate raw **Explainable AI (XAI)** data into user-tailored narratives. By utilizing a **Contextual Preference Model (CPM)** and a multi-stage **Verification Loop**, the system ensures that explanations are both faithful to the underlying model and stylistically aligned with the target audience.
+
+![Visual Overview of PONTE](schema.jpg)
 
 ---
 
