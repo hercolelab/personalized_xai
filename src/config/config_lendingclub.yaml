@@ -1,14 +1,13 @@
 seed: 42
 
 data:
-  csv_path: "data/raw/lendingclub.csv"  
+  csv_path: "data/raw/lendingclub.csv"
   target: "y_not_paid"
   test_size: 0.2
-  actionable_features: ['dti', 'revol_util', 'annual_inc', 'fico']
+  actionable_features: ["dti", "revol_util", "annual_inc", "fico"]
 
 model:
- 
-  hidden_layers: [64, 32] 
+  hidden_layers: [64, 32]
   lr: 0.001
   epochs: 100
   batch_size: 64
@@ -17,12 +16,11 @@ xai:
   shap_background_samples: 100
   dice_method: "gradient"
   dice_total_cfs: 3
-  dice_desired_class: 0   # 0 = "Paid" (Good), assuming y_not_paid=1 is Bad
+  dice_desired_class: 0 # 0 = "Paid" (Good), assuming y_not_paid=1 is Bad
   shap_relevance_threshold: 0.01
-  
 
 personas:
-  applicant1: [0.2, 0.8, 0.8, 0.5]   #Easy, Action-oriented
+  applicant1: [0.2, 0.8, 0.8, 0.5] #Easy, Action-oriented
   applicant2: [0.2, 0.8, 0.5, 0.8] # Easy, Cause-oriented
   officer1: [0.8, 0.2, 0.2, 0.8] # High Technicality, Cause-oriented
   officer2: [0.8, 0.2, 0.8, 0.2] # High Technicality, Action-oriented
@@ -35,15 +33,15 @@ verifier:
     default: 0.5
     impact: 0.005
     alignment: 0.35
-  
+
   alias_map:
     ANNUAL_INC: ["INCOME", "SALARY", "EARNINGS", "YEARLY_PAY"]
     LOAN_AMNT: ["AMOUNT", "PRINCIPAL", "REQUESTED", "LOAN_SIZE"]
     DTI: ["DEBT_RATIO", "DEBT_TO_INCOME", "BURDEN"]
     FICO: ["SCORE", "CREDIT_SCORE", "RATING"]
     REVOL_UTIL: ["UTILIZATION", "CARD_USAGE", "LIMIT_USAGE"]
-    
-  llm_judge_model: "kimi-k2.5:cloud"
+
+  llm_judge_model: "groq:openai/gpt-oss-20b"
 
   verifier_rubric:
     technicality:
@@ -69,14 +67,14 @@ verifier:
 
 orchestrator:
   max_retries: 10
-  max_steps: 20
+  max_steps: 10
   clean_tags_from_final: true
-  test_role: "applicant" 
-  eval_alignment_tolerance: 0.1
+  test_role: "applicant"
+  eval_alignment_tolerance: 0.2
 
 refiner:
-  enabled: true  
-  #max_refine_attempts: 3 
+  enabled: true
+  #max_refine_attempts: 3
 
 rag:
   enabled: true

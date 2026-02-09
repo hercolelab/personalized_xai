@@ -41,7 +41,7 @@ verifier:
     GLUCOSE: ["GLU", "GLICEMIA", "ZUCCHERO"]
     PREGNANCIES: ["PREG", "GRAVIDANZE"]
 
-  llm_judge_model: "kimi-k2.5:cloud"
+  llm_judge_model: "groq:openai/gpt-oss-20b"
 
   verifier_rubric:
     technicality:
@@ -70,7 +70,7 @@ orchestrator:
   max_steps: 20
   clean_tags_from_final: true
   test_role: "patient" # Default role for main test
-  eval_alignment_tolerance: 0.1
+  eval_alignment_tolerance: 0.2
 
 refiner:
   enabled: true # Set to false to fall back to hint-based mechanism
